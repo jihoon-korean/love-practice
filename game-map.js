@@ -85,7 +85,7 @@ function sleepNextDay(){
  showChoices('휴식 완료','3때가 지나고 체력이 완전히 회복되었습니다.',[['동네로 돌아가기',closePanel]]);
 }
 function endAction(){update()}
-function show(title,body){$('wrap').classList.remove('cafe-mode');$('panel').innerHTML='<button class="close" onclick="closePanel()">✕ 닫기</button><h2>'+title+'</h2>'+body;$('wrap').classList.add('show')}
+function show(title,body){$('wrap').classList.remove('cafe-mode');$('panel').innerHTML='<h2>'+title+'</h2>'+body;$('wrap').classList.add('show')}
 function closePanel(){$('wrap').classList.remove('show','cafe-mode')}
 function button(label,fn){const b=document.createElement('button');b.textContent=label;b.onclick=fn;return b}
 function showChoices(title,description,options){show(title,'<p>'+description+'</p><div class="options" id="options"></div>');const root=$('options');for(const [label,cb] of options)root.append(button(label,cb))}
