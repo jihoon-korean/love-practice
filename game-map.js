@@ -29,4 +29,4 @@ function journal(){show('📒 기록',st.logs.length?st.logs.map((v,i)=>'<p>'+(i
 function settings(){show('⚙️ 설정','<p>이름: '+(st.name||'미설정')+'</p><p>자동 저장: 켜짐</p><p><button onclick="save()">저장</button><button onclick="reset()">새 게임</button></p>')}
 function reset(){if(confirm('기존 진행 기록을 초기화하고 새 게임을 시작할까요?')){st=defaultState();update();nameStart()}}
 $('wrap').addEventListener('click',e=>{if(e.target===$('wrap'))closePanel()});addEventListener('pagehide',persist);
-const probe=new Image();probe.onload=()=>{$('scene').classList.remove('fallback')};probe.src='assets/town-map.png';renderSpots();update();if(!st.name)nameStart();
+const probe=new Image();probe.onload=()=>{$('scene').classList.remove('fallback');$('scene').classList.add('loaded')};probe.onerror=()=>{$('mapStatus').textContent='⚠️ town-map.png 이미지를 불러오지 못했습니다. GitHub assets 폴더에서 파일을 확인해 주세요.'};probe.src='assets/town-map.png?map=20261110b';renderSpots();update();if(!st.name)nameStart();
