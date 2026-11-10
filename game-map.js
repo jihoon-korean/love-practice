@@ -25,7 +25,7 @@ function save(){persist();alert('게임이 저장되었습니다.')}
 function update(){
  $('player').textContent='Lv.1 '+(st.name||'이름 미설정');$('hp').textContent=st.hp;$('mood').textContent=st.mood;$('love').textContent=st.relation;
  $('money').textContent='🪙 '+st.money.toLocaleString()+'원';
- $('clock').textContent='📅 '+st.day+'일차　☀️ '+(TIME_SLOTS[Math.min(st.slot,4)]+(st.slot===5?' · 하루 마무리':''))+'　('+Math.min(st.slot+1,5)+'/5)';
+ $('clock').textContent='📅 '+st.day+'일차　☀️ '+TIME_SLOTS[st.slot]+'　('+(st.slot+1)+'/6)';
  $('quest').textContent=st.stage===0?'□ 카페에서 한서윤과 첫 인사':st.stage<3?'☑ 한서윤과 첫 인사　□ 다시 카페 방문':'☑ 첫 번째 이야기 완료';persist();
 }
 function advance(slots=1){
@@ -34,7 +34,7 @@ function advance(slots=1){
  const total=st.slot+n;st.day+=Math.floor(total/6);st.slot=total%6;update();refreshTownVisual();
 }
 function sleepNextDay(){
- st.day++;st.slot=0;st.mapId=HOME_MAP_ID;st.hp=100;st.mood=Math.min(100,st.mood+10);update();
+ st.day++;st.slot=0;st.mapId=HOME_MAP_ID;st.hp=100;st.mood=Math.min(100,st.mood+10);update();refreshTownVisual();
  showChoices('새로운 아침','새로운 하루가 시작되었습니다.',[['동네로 돌아가기',closePanel]]);
 }
 function endAction(){update()}
