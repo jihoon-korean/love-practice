@@ -63,7 +63,7 @@ function update(){
 }
 function paySalary(){
  const last=Number(st.flags.lastPayday)||0;
- const payday=Math.floor((st.day-1)/30)*30;
+ const payday=Math.floor(st.day/30)*30;
  if(payday>=30&&payday>last){const count=Math.floor((payday-last)/30);const salary=2000000*count;st.money+=salary;st.flags.lastPayday=payday;st.logs.push(payday+'일차 월급 '+salary.toLocaleString()+'원 지급');st.flags.salaryNotice=salary}
 }
 function advance(slots=1,{rest=false}={}){
