@@ -3,15 +3,19 @@ const $=id=>document.getElementById(id);
 const defaultState=()=>({name:'',hp:100,mood:60,money:100000,day:1,slot:0,mapId:'town',minutes:860,stage:0,relation:0,logs:[],items:[],visited:[],flags:{},scene:'town'});
 let st=defaultState();
 try{const raw=localStorage.getItem('love-practice-map-v1');if(raw)st={...st,...JSON.parse(raw)};else{const old=localStorage.getItem('love-practice-08');if(old){const v=JSON.parse(old);st={...st,hp:v.hp??100,mood:v.mood??60,money:v.money??100000,day:v.day??1,slot:v.slot??0,minutes:v.minutes??860,stage:v.stage??0,relation:v.relation??0,logs:v.logs??[],items:v.items??[]}}}}catch(e){console.warn(e)}
-const TIME_SLOTS=['아침','점심','낮','저녁','밤'];
-const HOME_MAP_ID='town',TAXI_FARE=20000;
+const TIME_SLOTS=['아침','점심','낮','저녁','밤','새벽'];
+const HOME_MAP_ID='town',BUS_FARE=1800,TAXI_FARE_DAY=8000,TAXI_FARE_NIGHT=20000;
+const OPEN_HOURS={house:[0,1,2,3,4,5],flower:[0,1,2,3],starbucks:[0,1,2,3],gukbap:[0,1,2,3,4,5],park:[0,1,2,3,4,5],pet:[0,1,2,3],cu:[0,1,2,3,4,5],bus:[0,1,2,3],taxi:[0,1,2,3,4,5]};
+function isOpen(id,slot=st.slot){return (OPEN_HOURS[id]||[]).includes(slot)}
+function taxiFare(slot=st.slot){return slot>=4?TAXI_FARE_NIGHT:TAXI_FARE_DAY}
+function travelByTaxi(destination){const fare=taxiFare();if(st.money<fare){showChoices('🚕 택시','택시비 '+fare.toLocaleString()+'원이 부족합니다.',[['돌아가기',closePanel]]);return}st.money-=fare;st.mapId=destination;st.logs.push('택시 이동 '+fare.toLocaleString()+'원');update();showChoices('🚕 택시','택시로 이동했습니다. 요금 '+fare.toLocaleString()+'원이 결제되었습니다.',[['확인',closePanel]])}
 function busOperating(slot=st.slot){return slot>=0&&slot<4}
 function isNight(slot=st.slot){return slot>=4}
 // Previous saves used a minute-based clock; start the new six-slot system at morning without resetting progress.
 if(!Number.isInteger(st.slot)||st.slot<0||st.slot>5)st.slot=0;
 if(!Number.isInteger(st.day)||st.day<1)st.day=1;
 if(!st.mapId)st.mapId=HOME_MAP_ID;
-const locations=[{id:'house',label:'🏠 주인공 집',x:13,y:73,desc:'휴식과 하루 마무리'},{id:'flower',label:'💐 꽃집',x:20,y:42,desc:'꽃 선물 구매'},{id:'starbucks',label:'☕ 카페',x:39,y:43,desc:'한서윤과의 만남'},{id:'gukbap',label:'🍲 국밥집',x:54,y:41,desc:'식사로 체력 회복'},{id:'park',label:'🌳 공원',x:61,y:24,desc:'산책과 휴식'},{id:'pet',label:'🐶 애견샵',x:82,y:30,desc:'강아지와의 만남'},{id:'cu',label:'🏪 CU 편의점',x:74,y:48,desc:'생활용품 구매'},{id:'bus',label:'🚌 버스정류장',x:59,y:70,desc:'다른 지역으로 이동'}];
+const locations=[{id:'taxi',label:'🚕 택시',x:67,y:73,desc:'목적지까지 택시 이동'},{id:'house',label:'🏠 주인공 집',x:13,y:73,desc:'휴식과 하루 마무리'},{id:'flower',label:'💐 꽃집',x:20,y:42,desc:'꽃 선물 구매'},{id:'starbucks',label:'☕ 카페',x:39,y:43,desc:'한서윤과의 만남'},{id:'gukbap',label:'🍲 국밥집',x:54,y:41,desc:'식사로 체력 회복'},{id:'park',label:'🌳 공원',x:61,y:24,desc:'산책과 휴식'},{id:'pet',label:'🐶 애견샵',x:82,y:30,desc:'강아지와의 만남'},{id:'cu',label:'🏪 CU 편의점',x:74,y:48,desc:'생활용품 구매'},{id:'bus',label:'🚌 버스정류장',x:59,y:70,desc:'다른 지역으로 이동'}];
 const stories=[
 {say:'어서 오세요! 처음 뵙는 분 같은데… 이사 오신 거예요?',options:[['네, 최근에 이사 왔어요.',2,'아, 그러셨구나! 앞으로 자주 뵙겠네요.'],['좋은 카페네요. 자주 올 것 같아요.',1,'감사해요. 편하게 들러 주세요!'],['커피 한 잔 주세요. (4,500원)',0,'네, 아메리카노 준비해 드릴게요.',4500]]},
 {say:'어? 저번에 오셨던 분이네요. 오늘은 어떠셨어요?',options:[['바빴지만 괜찮았어요.',2,'고생 많으셨어요. 커피 한잔하며 쉬세요.'],['여기 커피가 생각났어요.',1,'후후, 그러셨구나. 오늘도 같은 메뉴로 드릴까요?'],['그냥 쉬고 싶어요.',0,'네, 편하게 쉬다 가세요.']]},
@@ -27,24 +31,15 @@ function update(){
 function advance(slots=1){
  const n=Math.max(0,Math.floor(Number(slots)||0));
  if(!n)return;
- st.slot=Math.min(5,st.slot+n);update();
+ const total=st.slot+n;st.day+=Math.floor(total/6);st.slot=total%6;update();refreshTownVisual();
 }
 function sleepNextDay(){
  st.day++;st.slot=0;st.mapId=HOME_MAP_ID;st.hp=100;st.mood=Math.min(100,st.mood+10);update();
  showChoices('새로운 아침','새로운 하루가 시작되었습니다.',[['동네로 돌아가기',closePanel]]);
 }
-// To be called after a night action on future non-home maps; events may opt out with overnight:true.
-function finishNightAction({overnight=false}={}){
- if(overnight||st.mapId===HOME_MAP_ID||st.slot!==5)return false;
- st.money=Math.max(0,st.money-TAXI_FARE);
- st.mapId=HOME_MAP_ID;
- st.logs.push('막차를 놓쳐 택시로 귀가 (20,000원)');update();
- showChoices('🚕 늦은 귀가','막차를 놓쳐서 택시를 타야된다..',[['집이 있는 마을로 돌아가기',()=>{closePanel();renderSpots()}]]);
- return true;
-}
 function endAction(){update()}
 function show(title,body){$('wrap').classList.remove('cafe-mode');$('panel').innerHTML='<button class="close" onclick="closePanel()">✕ 닫기</button><h2>'+title+'</h2>'+body;$('wrap').classList.add('show')}
-function closePanel(){if(st.flags?.nightReturnPending){st.flags.nightReturnPending=false;if(finishNightAction())return}$('wrap').classList.remove('show','cafe-mode')}
+function closePanel(){$('wrap').classList.remove('show','cafe-mode')}
 function button(label,fn){const b=document.createElement('button');b.textContent=label;b.onclick=fn;return b}
 function showChoices(title,description,options){show(title,'<p>'+description+'</p><div class="options" id="options"></div>');const root=$('options');for(const [label,cb] of options)root.append(button(label,cb))}
 function home(){closePanel();renderSpots()}
@@ -81,12 +76,11 @@ function cafeOrder(item,price){
  seoyoonReply('네, '+item+' 준비해 드릴게요.',[['동네로 돌아가기',closePanel]]);
 }
 function purchase(item,price,hp=0,mood=0){if(st.money<price){alert('돈이 부족합니다.');return}st.money-=price;st.hp=Math.min(100,st.hp+hp);st.mood=Math.min(100,st.mood+mood);st.items.push(item);st.logs.push(item+' 구매');endAction();showChoices('구매 완료',item+'을(를) 구매했습니다.',[['동네로 돌아가기',closePanel]])}
-function visit(id){const l=locations.find(v=>v.id===id);if(!l)return;if(st.slot>=5&&id!=='house'){showChoices('🌙 하루 마무리','오늘의 마지막 때를 사용했습니다. 집에서 잠을 자고 다음 날을 시작하세요.',[['동네로 돌아가기',closePanel]]);return}
- const enteredAtNight=isNight();
- // Opening a location is one action; do not charge again for choices or purchases inside.
- if(!(id==='house'&&st.slot>=4))advance(1);
- st.visited=[...new Set([...st.visited,id])];persist();
- if(enteredAtNight&&st.mapId!==HOME_MAP_ID){st.flags=st.flags||{};st.flags.nightReturnPending=true;persist()}if(id==='starbucks')return storyAtCafe();if(id==='house')return showChoices('🏠 '+st.name+'의 집','오늘도 수고했어요. 잠시 쉬어갈까요?',[['휴식하기 (체력 +20, 1때)',()=>{st.hp=Math.min(100,st.hp+20);endAction();showChoices('휴식 완료','몸이 한결 가벼워졌습니다.',[['돌아가기',closePanel]])}],['잠자기 · 다음 날',()=>{sleepNextDay()}]]);if(id==='flower')return showChoices('💐 꽃집','화사한 꽃향기가 가득합니다.',[['꽃다발 구매 (12,000원)',()=>purchase('꽃다발',12000)],['동네로 돌아가기',closePanel]]);if(id==='cu')return showChoices('🏪 CU 편의점','오늘도 다양한 상품이 진열되어 있습니다.',[['생수 구매 (1,000원)',()=>purchase('생수',1000,3)],['간식 구매 (2,500원)',()=>purchase('간식',2500,0,4)],['동네로 돌아가기',closePanel]]);if(id==='gukbap')return showChoices('🍲 국밥집','진한 국물 냄새가 가게 안을 채웁니다.',[['국밥 먹기 (9,000원)',()=>purchase('국밥',9000,25,5)],['동네로 돌아가기',closePanel]]);if(id==='park')return showChoices('🌳 동네 공원','벚꽃잎이 바람에 흩날립니다.',[['산책하기 (기분 +10, 1때)',()=>{st.mood=Math.min(100,st.mood+10);endAction();showChoices('산책 완료','기분 좋은 바람을 맞으며 산책했습니다.',[['돌아가기',closePanel]])}],['동네로 돌아가기',closePanel]]);if(id==='pet')return showChoices('🐶 애견샵','귀여운 강아지들이 반갑게 맞이합니다.',[['강아지 구경하기 (기분 +5)',()=>{st.mood=Math.min(100,st.mood+5);endAction();showChoices('애견샵','강아지가 꼬리를 흔듭니다. 언젠가 반려동물을 키워볼까요?',[['돌아가기',closePanel]])}],['동네로 돌아가기',closePanel]]);if(id==='bus')return showChoices('🚌 버스정류장',busOperating(st.slot-1)?'버스가 운행 중입니다. 아침부터 저녁까지 이용할 수 있습니다.':'막차가 끊겼습니다. 밤에는 버스를 이용할 수 없습니다.',busOperating(st.slot-1)?[['출근 노선 확인',()=>showChoices('🚌 버스 노선','회사 출근 노선은 다음 업데이트에서 개통됩니다.',[['돌아가기',closePanel]])],['동네로 돌아가기',closePanel]]:[['동네로 돌아가기',closePanel]])}
+function visit(id){const l=locations.find(v=>v.id===id);if(!l)return;
+ const arrivalSlot=st.slot;
+ if(!isOpen(id,arrivalSlot)){showChoices('영업 종료',l.label+'은(는) 현재 영업하지 않습니다. 아침부터 저녁까지 이용할 수 있습니다.',[['확인',closePanel]]);return}
+ advance(1);st.visited=[...new Set([...st.visited,id])];persist();
+if(id==='starbucks')return storyAtCafe();if(id==='house')return showChoices('🏠 '+st.name+'의 집','오늘도 수고했어요. 잠시 쉬어갈까요?',[['휴식하기 (체력 +20, 1때)',()=>{st.hp=Math.min(100,st.hp+20);endAction();showChoices('휴식 완료','몸이 한결 가벼워졌습니다.',[['돌아가기',closePanel]])}],['잠자기 · 다음 날',()=>{sleepNextDay()}]]);if(id==='flower')return showChoices('💐 꽃집','화사한 꽃향기가 가득합니다.',[['꽃다발 구매 (12,000원)',()=>purchase('꽃다발',12000)],['동네로 돌아가기',closePanel]]);if(id==='cu')return showChoices('🏪 CU 편의점','오늘도 다양한 상품이 진열되어 있습니다.',[['생수 구매 (1,000원)',()=>purchase('생수',1000,3)],['간식 구매 (2,500원)',()=>purchase('간식',2500,0,4)],['동네로 돌아가기',closePanel]]);if(id==='gukbap')return showChoices('🍲 국밥집','진한 국물 냄새가 가게 안을 채웁니다.',[['국밥 먹기 (9,000원)',()=>purchase('국밥',9000,25,5)],['동네로 돌아가기',closePanel]]);if(id==='park')return showChoices('🌳 동네 공원','벚꽃잎이 바람에 흩날립니다.',[['산책하기 (기분 +10, 1때)',()=>{st.mood=Math.min(100,st.mood+10);endAction();showChoices('산책 완료','기분 좋은 바람을 맞으며 산책했습니다.',[['돌아가기',closePanel]])}],['동네로 돌아가기',closePanel]]);if(id==='pet')return showChoices('🐶 애견샵','귀여운 강아지들이 반갑게 맞이합니다.',[['강아지 구경하기 (기분 +5)',()=>{st.mood=Math.min(100,st.mood+5);endAction();showChoices('애견샵','강아지가 꼬리를 흔듭니다. 언젠가 반려동물을 키워볼까요?',[['돌아가기',closePanel]])}],['동네로 돌아가기',closePanel]]);if(id==='bus')return showChoices('🚌 버스정류장','버스는 저녁까지 운행합니다. 집 ↔ 회사 편도 요금은 1,800원입니다.',['출근 노선 확인','동네로 돌아가기'].map((label,i)=>i===0?[label,()=>showChoices('🚌 버스 노선','회사 맵이 개통되면 편도 1,800원으로 이동할 수 있습니다.',[['확인',closePanel]])]:[label,closePanel]));if(id==='taxi')return showChoices('🚕 택시','집 ↔ 회사 택시 요금: '+taxiFare(arrivalSlot).toLocaleString()+'원. 밤·새벽에는 20,000원입니다.',[['회사로 이동 (준비 중)',()=>showChoices('🚕 택시','회사 맵이 아직 개통되지 않았습니다. 요금은 차감되지 않습니다.',[['확인',closePanel]])],['동네로 돌아가기',closePanel]])}
 function schedule(){show('📅 일정','<p>오늘의 목표: '+(st.stage<3?'한서윤과의 관계를 발전시키기':'동네에서 자유롭게 생활하기')+'</p><p>버스정류장 회사 노선은 준비 중입니다.</p>')}
 function people(){show('💗 인물 관계','<p>한서윤 · 카페 바리스타</p><p>호감도: '+st.relation+'</p><p>대화 진행: '+st.stage+'/3</p>')}
 function inventory(){show('👜 가방','<p>소지금: '+st.money.toLocaleString()+'원</p><p>소지품: '+(st.items.join(', ')||'없음')+'</p>')}
@@ -94,4 +88,8 @@ function journal(){show('📒 기록',st.logs.length?st.logs.map((v,i)=>'<p>'+(i
 function settings(){show('⚙️ 설정','<p>이름: '+(st.name||'미설정')+'</p><p>자동 저장: 켜짐</p><p><button onclick="save()">저장</button><button onclick="reset()">새 게임</button></p>')}
 function reset(){if(confirm('기존 진행 기록을 초기화하고 새 게임을 시작할까요?')){st=defaultState();update();nameStart()}}
 $('wrap').addEventListener('click',e=>{if(e.target===$('wrap'))closePanel()});addEventListener('pagehide',persist);
-const probe=new Image();probe.onload=()=>{$('scene').classList.remove('fallback');$('scene').classList.add('loaded')};probe.onerror=()=>{$('mapStatus').textContent='⚠️ town-map.png 이미지를 불러오지 못했습니다. GitHub assets 폴더에서 파일을 확인해 주세요.'};probe.src='assets/maps/town-map.png?map=20261110b';renderSpots();update();if(!st.name)nameStart();
+const DAY_MAP='assets/maps/town-map.png',EVENING_MAP='assets/maps/town-map-evening.png';
+let eveningReady=false;
+const eveningProbe=new Image();eveningProbe.onload=()=>{eveningReady=true;refreshTownVisual()};eveningProbe.onerror=()=>{eveningReady=false};eveningProbe.src=EVENING_MAP;
+function refreshTownVisual(){const path=st.slot>=3&&eveningReady?EVENING_MAP:DAY_MAP;const el=$('scene');if(el)el.style.backgroundImage='url("'+path+'")'}
+const probe=new Image();probe.onload=()=>{$('scene').classList.remove('fallback');$('scene').classList.add('loaded')};probe.onerror=()=>{$('mapStatus').textContent='⚠️ town-map.png 이미지를 불러오지 못했습니다. GitHub assets 폴더에서 파일을 확인해 주세요.'};probe.src='assets/maps/town-map.png?map=20261110b';renderSpots();update();refreshTownVisual();if(!st.name)nameStart();
