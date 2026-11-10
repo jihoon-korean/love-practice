@@ -28,14 +28,22 @@ function update(){
  $('clock').textContent='📅 '+st.day+'일차　☀️ '+TIME_SLOTS[st.slot]+'　('+(st.slot+1)+'/6)';
  $('quest').textContent=st.stage===0?'□ 카페에서 한서윤과 첫 인사':st.stage<3?'☑ 한서윤과 첫 인사　□ 다시 카페 방문':'☑ 첫 번째 이야기 완료';persist();
 }
-function advance(slots=1){
- const n=Math.max(0,Math.floor(Number(slots)||0));
- if(!n)return;
- const total=st.slot+n;st.day+=Math.floor(total/6);st.slot=total%6;update();refreshTownVisual();
+function advance(slots=1,{rest=false}={}){
+ const n=Math.max(0,Math.floor(Number(slots)||0));if(!n)return;
+ const total=st.slot+n;st.day+=Math.floor(total/6);st.slot=total%6;
+ if(!rest){const before=st.hp;st.hp=Math.max(0,st.hp-20*n);if(before>20&&st.hp===20)st.flags.tiredWarning=true;if(before>0&&st.hp===0)st.flags.hospitalPending=true}
+ update();refreshTownVisual();
 }
+function finishTimeConsequences(){
+ if(st.flags.hospitalPending){st.flags.hospitalPending=false;st.flags.tiredWarning=false;st.money=Math.max(0,st.money-70000);st.hp=100;st.mapId='hospital';st.logs.push('과로로 쓰러져 병원에서 링거를 맞았다. 병원비 70,000원');update();
+ document.body.style.transition='filter .8s';document.body.style.filter='brightness(.05)';setTimeout(()=>{document.body.style.filter='brightness(1)';showChoices('🏥 회사 옆 병원','오늘은 무리했어. 정신을 차려보니 병원이다. 링거를 맞고 병원비 70,000원을 지불했다.',[['확인',closePanel]])},800);return true}
+ if(st.flags.tiredWarning){st.flags.tiredWarning=false;showChoices('😫 피곤함','너무 피곤해, 집에가자. 그래도 계속 행동할 수 있습니다.',[['계속하기',closePanel]]);return true}return false;
+}
+function spendTime(){advance(1);if(!finishTimeConsequences())showChoices('⏳ 시간보내기','잠시 시간을 보냈습니다. 체력이 20 감소했습니다.',[['확인',closePanel]])}
+
 function sleepNextDay(){
- st.day++;st.slot=0;st.mapId=HOME_MAP_ID;st.hp=100;st.mood=Math.min(100,st.mood+10);update();refreshTownVisual();
- showChoices('새로운 아침','새로운 하루가 시작되었습니다.',[['동네로 돌아가기',closePanel]]);
+ advance(3,{rest:true});st.hp=100;st.mapId=HOME_MAP_ID;st.flags.tiredWarning=false;st.flags.hospitalPending=false;st.mood=Math.min(100,st.mood+10);update();refreshTownVisual();
+ showChoices('새로운 아침','3때가 지나고 체력이 완전히 회복되었습니다.',[['동네로 돌아가기',closePanel]]);
 }
 function endAction(){update()}
 function show(title,body){$('wrap').classList.remove('cafe-mode');$('panel').innerHTML='<button class="close" onclick="closePanel()">✕ 닫기</button><h2>'+title+'</h2>'+body;$('wrap').classList.add('show')}
@@ -79,8 +87,8 @@ function purchase(item,price,hp=0,mood=0){if(st.money<price){alert('돈이 부�
 function visit(id){const l=locations.find(v=>v.id===id);if(!l)return;
  const arrivalSlot=st.slot;
  if(!isOpen(id,arrivalSlot)){showChoices('영업 종료',l.label+'은(는) 현재 영업하지 않습니다. 아침부터 저녁까지 이용할 수 있습니다.',[['확인',closePanel]]);return}
- advance(1);st.visited=[...new Set([...st.visited,id])];persist();
-if(id==='starbucks')return storyAtCafe();if(id==='house')return showChoices('🏠 '+st.name+'의 집','오늘도 수고했어요. 잠시 쉬어갈까요?',[['휴식하기 (체력 +20, 1때)',()=>{st.hp=Math.min(100,st.hp+20);endAction();showChoices('휴식 완료','몸이 한결 가벼워졌습니다.',[['돌아가기',closePanel]])}],['잠자기 · 다음 날',()=>{sleepNextDay()}]]);if(id==='flower')return showChoices('💐 꽃집','화사한 꽃향기가 가득합니다.',[['꽃다발 구매 (12,000원)',()=>purchase('꽃다발',12000)],['동네로 돌아가기',closePanel]]);if(id==='cu')return showChoices('🏪 CU 편의점','오늘도 다양한 상품이 진열되어 있습니다.',[['생수 구매 (1,000원)',()=>purchase('생수',1000,3)],['간식 구매 (2,500원)',()=>purchase('간식',2500,0,4)],['동네로 돌아가기',closePanel]]);if(id==='gukbap')return showChoices('🍲 국밥집','진한 국물 냄새가 가게 안을 채웁니다.',[['국밥 먹기 (9,000원)',()=>purchase('국밥',9000,25,5)],['동네로 돌아가기',closePanel]]);if(id==='park')return showChoices('🌳 동네 공원','벚꽃잎이 바람에 흩날립니다.',[['산책하기 (기분 +10, 1때)',()=>{st.mood=Math.min(100,st.mood+10);endAction();showChoices('산책 완료','기분 좋은 바람을 맞으며 산책했습니다.',[['돌아가기',closePanel]])}],['동네로 돌아가기',closePanel]]);if(id==='pet')return showChoices('🐶 애견샵','귀여운 강아지들이 반갑게 맞이합니다.',[['강아지 구경하기 (기분 +5)',()=>{st.mood=Math.min(100,st.mood+5);endAction();showChoices('애견샵','강아지가 꼬리를 흔듭니다. 언젠가 반려동물을 키워볼까요?',[['돌아가기',closePanel]])}],['동네로 돌아가기',closePanel]]);if(id==='bus')return showChoices('🚌 버스정류장','버스는 저녁까지 운행합니다. 집 ↔ 회사 편도 요금은 1,800원입니다.',['출근 노선 확인','동네로 돌아가기'].map((label,i)=>i===0?[label,()=>showChoices('🚌 버스 노선','회사 맵이 개통되면 편도 1,800원으로 이동할 수 있습니다.',[['확인',closePanel]])]:[label,closePanel]));if(id==='taxi')return showChoices('🚕 택시','집 ↔ 회사 택시 요금: '+taxiFare(arrivalSlot).toLocaleString()+'원. 밤·새벽에는 20,000원입니다.',[['회사로 이동 (준비 중)',()=>showChoices('🚕 택시','회사 맵이 아직 개통되지 않았습니다. 요금은 차감되지 않습니다.',[['확인',closePanel]])],['동네로 돌아가기',closePanel]])}
+ advance(1);st.visited=[...new Set([...st.visited,id])];persist();if(finishTimeConsequences())return;
+if(id==='starbucks')return storyAtCafe();if(id==='house')return showChoices('🏠 '+st.name+'의 집','오늘도 수고했어요. 잠시 쉬어갈까요?',[['휴식하기 (체력 +20)',()=>{st.hp=Math.min(100,st.hp+20);endAction();showChoices('휴식 완료','몸이 한결 가벼워졌습니다.',[['돌아가기',closePanel]])}],['잠자기 (3때 경과 · 체력 완전 회복)',()=>{sleepNextDay()}]]);if(id==='flower')return showChoices('💐 꽃집','화사한 꽃향기가 가득합니다.',[['꽃다발 구매 (12,000원)',()=>purchase('꽃다발',12000)],['동네로 돌아가기',closePanel]]);if(id==='cu')return showChoices('🏪 CU 편의점','오늘도 다양한 상품이 진열되어 있습니다.',[['생수 구매 (1,000원)',()=>purchase('생수',1000,3)],['간식 구매 (2,500원)',()=>purchase('간식',2500,0,4)],['동네로 돌아가기',closePanel]]);if(id==='gukbap')return showChoices('🍲 국밥집','진한 국물 냄새가 가게 안을 채웁니다.',[['국밥 먹기 (9,000원)',()=>purchase('국밥',9000,25,5)],['동네로 돌아가기',closePanel]]);if(id==='park')return showChoices('🌳 동네 공원','벚꽃잎이 바람에 흩날립니다.',[['산책하기 (기분 +10, 1때)',()=>{st.mood=Math.min(100,st.mood+10);endAction();showChoices('산책 완료','기분 좋은 바람을 맞으며 산책했습니다.',[['돌아가기',closePanel]])}],['동네로 돌아가기',closePanel]]);if(id==='pet')return showChoices('🐶 애견샵','귀여운 강아지들이 반갑게 맞이합니다.',[['강아지 구경하기 (기분 +5)',()=>{st.mood=Math.min(100,st.mood+5);endAction();showChoices('애견샵','강아지가 꼬리를 흔듭니다. 언젠가 반려동물을 키워볼까요?',[['돌아가기',closePanel]])}],['동네로 돌아가기',closePanel]]);if(id==='bus')return showChoices('🚌 버스정류장','버스는 저녁까지 운행합니다. 집 ↔ 회사 편도 요금은 1,800원입니다.',['출근 노선 확인','동네로 돌아가기'].map((label,i)=>i===0?[label,()=>showChoices('🚌 버스 노선','회사 맵이 개통되면 편도 1,800원으로 이동할 수 있습니다.',[['확인',closePanel]])]:[label,closePanel]));if(id==='taxi')return showChoices('🚕 택시','집 ↔ 회사 택시 요금: '+taxiFare(arrivalSlot).toLocaleString()+'원. 밤·새벽에는 20,000원입니다.',[['회사로 이동 (준비 중)',()=>showChoices('🚕 택시','회사 맵이 아직 개통되지 않았습니다. 요금은 차감되지 않습니다.',[['확인',closePanel]])],['동네로 돌아가기',closePanel]])}
 function schedule(){show('📅 일정','<p>오늘의 목표: '+(st.stage<3?'한서윤과의 관계를 발전시키기':'동네에서 자유롭게 생활하기')+'</p><p>버스정류장 회사 노선은 준비 중입니다.</p>')}
 function people(){show('💗 인물 관계','<p>한서윤 · 카페 바리스타</p><p>호감도: '+st.relation+'</p><p>대화 진행: '+st.stage+'/3</p>')}
 function inventory(){show('👜 가방','<p>소지금: '+st.money.toLocaleString()+'원</p><p>소지품: '+(st.items.join(', ')||'없음')+'</p>')}
