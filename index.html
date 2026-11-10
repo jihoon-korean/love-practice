@@ -42,4 +42,14 @@
 
 /* Cafe has its own exit choice; hide redundant close control only in cafe */
 #wrap.cafe-mode .panel>.close{display:none!important}
+
+/* Alpha 2.4: late-arrival character scene and smooth travel transition */
+#app:after{content:"";position:absolute;inset:0;background:#000;opacity:0;pointer-events:none;transition:opacity .52s ease;z-index:30}
+#app:has(#scene.travel-fade):after{opacity:.94}
+.late-office-event{display:flex;align-items:flex-end;justify-content:center;position:relative;min-height:min(58dvh,470px);overflow:hidden;background:linear-gradient(180deg,rgba(8,14,25,.2),rgba(8,14,25,.85)),url("assets/locations/office-interior.png") center/cover;border-radius:14px}
+.late-office-event>img{max-height:min(58dvh,470px);max-width:60%;object-fit:contain;align-self:flex-end;filter:drop-shadow(0 5px 15px #0008)}
+.late-office-dialog{background:rgba(17,22,33,.94);color:white;padding:14px 18px;border-radius:12px;max-width:48%;margin:0 12px 12px 0;align-self:flex-end}
+.late-office-dialog p{font-size:clamp(14px,1.8vw,23px);font-weight:700;line-height:1.5}
+.late-office-dialog .options button{font-size:clamp(11px,1.2vw,15px);padding:8px 12px}
+@media(max-width:760px){.late-office-event{min-height:50dvh}.late-office-event>img{max-width:47%}.late-office-dialog{max-width:53%;padding:8px}.late-office-dialog p{font-size:13px}}
 </style></head><body><div id="app"><div id="scene" class="fallback"><div id="shade"></div></div><div id="mapStatus">🗺️ 마을 지도 이미지를 불러오는 중입니다.</div><div class="hud top"><div style="font-size:29px">👤</div><div><b id="player">이름 미설정</b><div class="stats">❤️ 체력 <span id="hp">100</span>　🙂 기분 <span id="mood">60</span>　💗 호감 <span id="love">0</span></div></div></div><div class="hud time" id="clock"></div><div class="hud wallet" id="money"></div><div class="hud quest"><strong>❕ 메인 퀘스트</strong><div id="quest"></div></div><div id="spots"></div><div class="footerHint">📍 건물 이름을 눌러 방문하세요</div><div class="bottom"><button onclick="home()"><span>🏘️</span>동네</button><button onclick="spendTime()"><span>⏳</span>시간보내기</button><button onclick="schedule()"><span>📅</span>일정</button><button onclick="people()"><span>💗</span>인물</button><button onclick="inventory()"><span>👜</span>가방</button><button onclick="journal()"><span>📒</span>기록</button><button onclick="save()"><span>💾</span>저장</button><button onclick="settings()"><span>⚙️</span>설정</button></div><div class="panelWrap" id="wrap"><div class="panel" id="panel"></div></div><div class="rotate">📱 휴대폰을 가로로 돌려주세요.</div></div><script src="game-map.js"></script></body></html>
