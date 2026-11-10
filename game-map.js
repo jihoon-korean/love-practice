@@ -1,8 +1,8 @@
 'use strict';
 const $=id=>document.getElementById(id);
-const defaultState=()=>({name:'',hp:100,mood:60,money:35000,day:1,minutes:860,stage:0,relation:0,logs:[],items:[],visited:[],flags:{},scene:'town'});
+const defaultState=()=>({name:'',hp:100,mood:60,money:100000,day:1,minutes:860,stage:0,relation:0,logs:[],items:[],visited:[],flags:{},scene:'town'});
 let st=defaultState();
-try{const raw=localStorage.getItem('love-practice-map-v1');if(raw)st={...st,...JSON.parse(raw)};else{const old=localStorage.getItem('love-practice-08');if(old){const v=JSON.parse(old);st={...st,hp:v.hp??100,mood:v.mood??60,money:v.money??35000,day:v.day??1,minutes:v.minutes??860,stage:v.stage??0,relation:v.relation??0,logs:v.logs??[],items:v.items??[]}}}}catch(e){console.warn(e)}
+try{const raw=localStorage.getItem('love-practice-map-v1');if(raw)st={...st,...JSON.parse(raw)};else{const old=localStorage.getItem('love-practice-08');if(old){const v=JSON.parse(old);st={...st,hp:v.hp??100,mood:v.mood??60,money:v.money??100000,day:v.day??1,minutes:v.minutes??860,stage:v.stage??0,relation:v.relation??0,logs:v.logs??[],items:v.items??[]}}}}catch(e){console.warn(e)}
 const locations=[{id:'house',label:'🏠 주인공 집',x:13,y:73,desc:'휴식과 하루 마무리'},{id:'flower',label:'💐 꽃집',x:20,y:42,desc:'꽃 선물 구매'},{id:'starbucks',label:'☕ 카페',x:39,y:43,desc:'한서윤과의 만남'},{id:'gukbap',label:'🍲 국밥집',x:54,y:41,desc:'식사로 체력 회복'},{id:'park',label:'🌳 공원',x:61,y:24,desc:'산책과 휴식'},{id:'pet',label:'🐶 애견샵',x:82,y:30,desc:'강아지와의 만남'},{id:'cu',label:'🏪 CU 편의점',x:74,y:48,desc:'생활용품 구매'},{id:'bus',label:'🚌 버스정류장',x:59,y:70,desc:'다른 지역으로 이동'}];
 const stories=[
 {say:'어서 오세요! 처음 뵙는 분 같은데… 이사 오신 거예요?',options:[['네, 최근에 이사 왔어요.',2,'아, 그러셨구나! 앞으로 자주 뵙겠네요.'],['좋은 카페네요. 자주 올 것 같아요.',1,'감사해요. 편하게 들러 주세요!'],['커피 한 잔 주세요. (4,500원)',0,'네, 아메리카노 준비해 드릴게요.',4500]]},
@@ -22,21 +22,24 @@ function nameStart(){show('🏠 새로운 동네에서의 시작','<p>게임에�
 const SEOYOON_PORTRAIT='assets/characters/seoyoon/normal.png';
 function seoyoonFace(){return '<div class="face character-face"><img src="'+SEOYOON_PORTRAIT+'" alt="카페 바리스타 한서윤" loading="eager" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'grid\'"><span class="face-fallback" style="display:none">👩🏻</span></div>'}
 function seoyoonReply(message,options){show('☕ 카페 · 한서윤','<div class="event">'+seoyoonFace()+'<div class="story"><div class="sub">한서윤 · 바리스타</div><p>'+message+'</p><div class="options" id="options"></div></div></div>');$('wrap').classList.add('cafe-mode');for(const [label,callback] of options)$('options').append(button(label,callback))}
+const CAFE_MENU=[
+ {name:'아메리카노',price:3000},
+ {name:'바닐라라떼',price:4500},
+ {name:'아이스티',price:4000},
+ {name:'녹차라떼',price:5000},
+ {name:'자몽에이드',price:4800}
+];
+function cafeMenuOptions(){return [
+ ...CAFE_MENU.map(item=>[item.name+' ('+item.price.toLocaleString()+'원)',()=>cafeOrder(item.name,item.price)]),
+ ['동네로 돌아가기',closePanel]
+]}
 function storyAtCafe(){
  st.flags=st.flags||{};
  st.flags.cafeVisits=(Number(st.flags.cafeVisits)||0)+1;
  const count=st.flags.cafeVisits;
- if(count<20){
-  seoyoonReply('안녕하세요. 어떤 걸로 드릴까요?',[
-   ['아메리카노 주세요. (4,500원)',()=>cafeOrder('아메리카노',4500)],
-   ['라떼로 부탁드려요. (5,000원)',()=>cafeOrder('라떼',5000)],
-   ['오늘은 그냥 구경할게요.',()=>seoyoonReply('네, 편하게 둘러보세요.',[['동네로 돌아가기',closePanel]])],
-   ['동네로 돌아가기',closePanel]
-  ]);
-  return;
- }
+ if(count<20){seoyoonReply('안녕하세요. 어떤 걸로 드릴까요?',cafeMenuOptions());return}
  seoyoonReply('어? 오늘도 오셨네요. 이제 얼굴이 익숙해졌어요.',[
-  ['평소처럼 커피를 주문한다. (4,500원)',()=>cafeOrder('아메리카노',4500)],
+  ...CAFE_MENU.map(item=>[item.name+' ('+item.price.toLocaleString()+'원)',()=>cafeOrder(item.name,item.price)]),
   ['제 이름을 기억하세요?',()=>{st.relation+=1;st.logs.push('한서윤과 조금 더 친해졌다.');advance(10);seoyoonReply('그럼요. 자주 오시는 손님이시잖아요.',[['동네로 돌아가기',closePanel]])}],
   ['동네로 돌아가기',closePanel]
  ]);
