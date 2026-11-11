@@ -34,7 +34,7 @@ function travel(destination,mode,departureSlot=st.slot){
  if(mode==='bus'&&!busOperating(departureSlot)){showChoices('🚌 운행 종료','밤과 새벽에는 버스가 운행하지 않습니다.',[['확인',closePanel]]);return}
  const fare=mode==='bus'?BUS_FARE:taxiFare(departureSlot);
  if(st.money<fare){showChoices('교통비 부족',fare.toLocaleString()+'원이 필요합니다. 현재 소지금이 부족합니다.',[['확인',closePanel]]);return}
- st.money-=fare;st.logs.push((mode==='bus'?'버스':'택시')+' '+areaLabel(destination)+' 이동 '+fare.toLocaleString()+'원');update();
+ st.money-=fare;st.flags.currentLocation=null;st.logs.push((mode='bus'?'버스':'택시')+' '+areaLabel(destination)+' 이동 '+fare.toLocaleString()+'원');update();
  const scene=$('scene');scene.classList.add('travel-fade');
  setTimeout(()=>{st.mapId=destination;refreshTownVisual();renderSpots();update();
  showChoices(mode==='bus'?'🚌 버스 이동':'🚕 택시 이동',areaLabel(destination)+'에 도착했습니다. '+fare.toLocaleString()+'원이 차감되었습니다.',[['지도 보기',closePanel]]);
@@ -102,7 +102,7 @@ function phone(){
  ['이메일',()=>openInternetApp('메일')],['유튜브',()=>openInternetApp('유튜브')],
  ['돌아가기',closePanel]]);
 }
-function openInternetApp(app){if(!canUseData(st.mapId==='town'))return;showChoices('🌐 '+app,app==='메일'?'새로운 이메일이 없습니다.':'동영상 서비스를 둘러봤습니다. 모바일 데이터 0.1GB가 사용될 수 있습니다.',[['휴대폰으로',phone]])}
+function openInternetApp(app){if(!canUseData(st.mapId==='town'&&st.flags.currentLocation==='house'))return;showChoices('🌐 '+app,app==='메일'?'새로운 이메일이 없습니다.':'동영상 서비스를 둘러봤습니다. 모바일 데이터 0.1GB가 사용될 수 있습니다.',[['휴대폰으로',phone]])}
 function phonePlans(){
  const l=ensureLife();showChoices('📶 휴대폰 요금제','요금제 변경은 다음 정기 청구일부터 반영됩니다.',Object.entries(PHONE_PLANS).map(([id,p])=>[p.name+' · 월 '+p.fee.toLocaleString()+'원 · '+(p.data===Infinity?'무제한':p.data+'GB'),()=>{l.phonePlan=id;update();showChoices('요금제 변경',p.name+' 요금제로 변경했습니다. 다음 청구일에 해당 요금이 적용됩니다.',[['휴대폰으로',phone]])}]).concat([['휴대폰으로',phone]]));
 }
@@ -183,7 +183,7 @@ function show(title,body){$('wrap').classList.remove('cafe-mode');$('panel').inn
 function closePanel(){$('wrap').classList.remove('show','cafe-mode')}
 function button(label,fn){const b=document.createElement('button');b.textContent=label;b.onclick=fn;return b}
 function showChoices(title,description,options){show(title,'<p>'+description+'</p><div class="options" id="options"></div>');const root=$('options');for(const [label,cb] of options)root.append(button(label,cb))}
-function home(){closePanel();refreshTownVisual();renderSpots()}
+function home(){st.flags.currentLocation=null;closePanel();refreshTownVisual();renderSpots()}
 function renderSpots(){const el=$('spots');el.replaceChildren();for(const l of (st.mapId==='office'?officeLocations:locations)){const b=document.createElement('button');b.className='spot';b.textContent=l.label;b.style.left=l.x+'%';b.style.top=l.y+'%';b.onclick=()=>visit(l.id);el.append(b)}}
 function nameStart(){show('🏠 새로운 동네에서의 시작','<p>게임에서 사용할 주인공 이름을 정해주세요. <strong>최대 4글자</strong>입니다.</p><input id="newName" maxlength="4" placeholder="이름 입력" autocomplete="off"><p><button id="nameGo">게임 시작하기</button></p>');$('nameGo').onclick=()=>{const v=Array.from($('newName').value.trim());if(!v.length||v.length>4){alert('이름은 1~4글자로 입력해 주세요.');return}st.name=v.join('');update();closePanel()}}
 const SEOYOON_PORTRAIT='assets/characters/seoyoon/normal.png';
@@ -221,7 +221,7 @@ function visit(id){const l=(st.mapId==='office'?officeLocations:locations).find(
  const arrivalSlot=st.slot;
  if(debtLocked()&&!['house','office','hospital'].includes(id))return blockedByDebt();
  if(!isOpen(id,arrivalSlot)){showChoices('영업 종료',l.label+'은(는) 현재 이용할 수 없습니다. 영업시간에 다시 방문해 주세요.',[['확인',closePanel]]);return}
- st.flags.lastEntrySlot=arrivalSlot;if(id!=='house')advance(1);st.visited=[...new Set([...st.visited,id])];persist();if(finishTimeConsequences())return;if(st.mapId==='office'){if(id==='office'&&arrivalSlot===2&&ensureLife().employment==='hired'&&st.day>=ensureLife().startDay)return lateOfficeEvent();return officeEvent(id)}
+ st.flags.lastEntrySlot=arrivalSlot;st.flags.currentLocation=id;if(id!=='house')advance(1);st.visited=[...new Set([...st.visited,id])];persist();if(finishTimeConsequences())return;if(st.mapId==='office'){if(id==='office'&&arrivalSlot===2&&ensureLife().employment==='hired'&&st.day>=ensureLife().startDay)return lateOfficeEvent();return officeEvent(id)}
 if(id==='starbucks')return debtLocked()?blockedByDebt():storyAtCafe();if(id==='house')return showChoices('🏠 '+st.name+'의 집','집에서는 Wi-Fi로 인터넷을 이용할 수 있습니다.',[['인터넷으로 입사지원하기',jobSearch],['휴식하기 (체력 +20)',()=>{st.hp=Math.min(100,st.hp+20);endAction();showChoices('휴식 완료','몸이 한결 가벼워졌습니다.',[['돌아가기',closePanel]])}],['잠자기 (3때 경과 · 체력 완전 회복)',()=>{sleepNextDay()}]]);if(id==='flower')return showChoices('💐 꽃집','화사한 꽃향기가 가득합니다.',[['꽃다발 구매 (12,000원)',()=>purchase('꽃다발',12000)],['동네로 돌아가기',closePanel]]);if(id==='cu')return showChoices('🏪 CU 편의점','오늘도 다양한 상품이 진열되어 있습니다.',[['생수 구매 (1,000원)',()=>purchase('생수',1000,3)],['간식 구매 (2,500원)',()=>purchase('간식',2500,0,4)],['동네로 돌아가기',closePanel]]);if(id==='gukbap')return showChoices('🍲 국밥집','진한 국물 냄새가 가게 안을 채웁니다.',[['국밥 먹기 (9,000원)',()=>purchase('국밥',9000,25,5)],['동네로 돌아가기',closePanel]]);if(id==='park')return showChoices('🌳 동네 공원','벚꽃잎이 바람에 흩날립니다.',[['산책하기 (기분 +10, 1때)',()=>{st.mood=Math.min(100,st.mood+10);endAction();showChoices('산책 완료','기분 좋은 바람을 맞으며 산책했습니다.',[['돌아가기',closePanel]])}],['동네로 돌아가기',closePanel]]);if(id==='pet')return showChoices('🐶 애견샵','귀여운 강아지들이 반갑게 맞이합니다.',[['강아지 구경하기 (기분 +5)',()=>{st.mood=Math.min(100,st.mood+5);endAction();showChoices('애견샵','강아지가 꼬리를 흔듭니다. 언젠가 반려동물을 키워볼까요?',[['돌아가기',closePanel]])}],['동네로 돌아가기',closePanel]]);if(id==='bus')return showChoices('🚌 버스정류장','회사까지 편도 1,800원입니다.',[['회사로 이동 (1,800원)',()=>travel('office','bus',arrivalSlot)],['동네로 돌아가기',closePanel]]);if(id==='taxi')return showChoices('🚕 택시','회사까지 요금 '+taxiFare(arrivalSlot).toLocaleString()+'원입니다.',[['회사로 이동',()=>travel('office','taxi',arrivalSlot)],['동네로 돌아가기',closePanel]])}
 function schedule(){const l=ensureLife();showChoices('📅 일정','현재 상태: '+(l.employment==='hired'?l.company+' 재직':'구직 중')+' · 다음 정산일: '+(Math.floor(st.day/30)+1)*30+'일차', [['확인',closePanel]])}
 function people(){show('💗 인물 관계','<p>한서윤 · 카페 바리스타</p><p>호감도: '+st.relation+'</p><p>대화 진행: '+st.stage+'/3</p>')}
