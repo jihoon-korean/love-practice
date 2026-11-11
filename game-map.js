@@ -30,17 +30,17 @@ if(!['town','office'].includes(st.mapId))st.mapId=st.mapId==='hospital'?'office'
 const locations=[{id:'taxi',label:'🚕 택시',x:67,y:73,desc:'목적지까지 택시 이동'},{id:'house',label:'🏠 주인공 집',x:13,y:73,desc:'휴식과 하루 마무리'},{id:'flower',label:'💐 꽃집',x:20,y:42,desc:'꽃 선물 구매'},{id:'starbucks',label:'☕ 카페',x:39,y:43,desc:'한서윤과의 만남'},{id:'gukbap',label:'🍲 국밥집',x:54,y:41,desc:'식사로 체력 회복'},{id:'park',label:'🌳 공원',x:61,y:24,desc:'산책과 휴식'},{id:'pet',label:'🐶 애견샵',x:82,y:30,desc:'강아지와의 만남'},{id:'cu',label:'🏪 CU 편의점',x:74,y:48,desc:'생활용품 구매'},{id:'bus',label:'🚌 버스정류장',x:59,y:70,desc:'다른 지역으로 이동'}];
 const officeLocations=[
 {id:'office',label:'🏢 회사',x:39,y:26},{id:'hospital',label:'🏥 병원',x:69,y:30},{id:'gym',label:'🏋️ 헬스장',x:13,y:39},
-{id:'bookstore',label:'📚 서점',x:12,y:59},{id:'restaurant',label:'🍽️ 식당',x:32,y:60},{id:'pub',label:'🍻 술집',x:49,y:58},
+{id:'bookstore',label:'📚 서점',x:12,y:59},{id:'library',label:'📖 도서관',x:24,y:67},{id:'restaurant',label:'🍽️ 식당',x:32,y:60},{id:'pub',label:'🍻 술집',x:49,y:58},
 {id:'mall',label:'🛍️ 쇼핑몰',x:64,y:45},{id:'officeCu',label:'🏪 편의점',x:78,y:61},
 {id:'officePark',label:'🌳 소공원',x:18,y:82},{id:'officeBus',label:'🚌 버스정류장',x:49,y:79},{id:'officeTaxi',label:'🚕 택시',x:64,y:75}];
-Object.assign(OPEN_HOURS,{office:[0,1,2,3,4],hospital:[0,1,2,3,4,5],gym:[0,1,2,3,4],bookstore:[0,1,2,3],restaurant:[1,2,3,4],pub:[3,4,5],mall:[0,1,2,3],officeCu:[0,1,2,3,4,5],officePark:[0,1,2,3,4,5],officeBus:[0,1,2,3],officeTaxi:[0,1,2,3,4,5]});
+Object.assign(OPEN_HOURS,{office:[0,1,2,3,4],hospital:[0,1,2,3,4,5],gym:[0,1,2,3,4],bookstore:[0,1,2,3],library:[0,1,2,3,4],restaurant:[1,2,3,4],pub:[3,4,5],mall:[0,1,2,3],officeCu:[0,1,2,3,4,5],officePark:[0,1,2,3,4,5],officeBus:[0,1,2,3],officeTaxi:[0,1,2,3,4,5]});
 function areaLabel(id){return id==='office'?'회사 주변':'우리 동네'}
 function travel(destination,mode,departureSlot=st.slot){
  if(destination===st.mapId){showChoices('교통 안내','이미 해당 지역에 있습니다.',[['확인',closePanel]]);return}
  if(mode==='bus'&&!busOperating(departureSlot)){showChoices('🚌 운행 종료','밤과 새벽에는 버스가 운행하지 않습니다.',[['확인',closePanel]]);return}
  const fare=mode==='bus'?BUS_FARE:taxiFare(departureSlot);
  if(st.money<fare){showChoices('교통비 부족',fare.toLocaleString()+'원이 필요합니다. 현재 소지금이 부족합니다.',[['확인',closePanel]]);return}
- st.money-=fare;st.flags.currentLocation=null;st.logs.push((mode='bus'?'버스':'택시')+' '+areaLabel(destination)+' 이동 '+fare.toLocaleString()+'원');update();
+ st.money-=fare;st.flags.currentLocation=null;st.logs.push((mode==='bus'?'버스':'택시')+' '+areaLabel(destination)+' 이동 '+fare.toLocaleString()+'원');update();
  const scene=$('scene');scene.classList.add('travel-fade');
  setTimeout(()=>{st.mapId=destination;refreshTownVisual();renderSpots();update();
  showChoices(mode==='bus'?'🚌 버스 이동':'🚕 택시 이동',areaLabel(destination)+'에 도착했습니다. '+fare.toLocaleString()+'원이 차감되었습니다.',[['지도 보기',closePanel]]);
@@ -67,6 +67,19 @@ const JOB_ROLES=[
  {id:'management',name:'경영지원',description:'인사·총무·회계 등 회사 운영 업무'}
 ];
 const JOB_LEVEL_DAYS=[0,75,250,625,1250,2500];
+function studyExperience(l=ensureLife()){if(!l.studyExperience||typeof l.studyExperience!=='object')l.studyExperience={};return l.studyExperience}
+function libraryVisit(){
+ const l=ensureLife(),xp=jobExperience(l),study=studyExperience(l);
+ showChoices('📚 도서관 · 직무 공부','독서에 시간 2칸이 필요합니다. 분야를 선택하면 직무역량이 10점 상승합니다. 공부한 역량은 이직 후에도 유지되며, 높은 숙련도는 향후 더 많은 회사 지원에 활용됩니다.',JOB_ROLES.map(r=>[r.name+' · 역량 '+(study[r.id]||0),()=>{
+  if(st.slot+2>=6&&st.day===monthEndDay()&&false)return;
+  advance(2,{rest:true});study[r.id]=(study[r.id]||0)+10;
+  st.hp=Math.max(0,st.hp-5);
+  st.logs.push(dateLabel()+' 도서관 '+r.name+' 공부 · 직무역량 +10');
+  update();
+  if(finishTimeConsequences())return;
+  showChoices('📖 독서 완료',r.name+' 분야를 공부했습니다.<br>직무역량: '+study[r.id]+'점 (+10)<br>해당 직군 근무 경력: '+(xp[r.id]||0)+'일 · Lv.'+jobLevel(xp[r.id]||0),[['도서관으로',libraryVisit],['지도 보기',closePanel]]);
+ }]).concat([['지도 보기',closePanel]]));
+}
 function jobRole(id){return JOB_ROLES.find(r=>r.id===id)}
 function jobExperience(l=ensureLife()){
  if(!l.jobExperience||typeof l.jobExperience!=='object')l.jobExperience={};
@@ -104,7 +117,11 @@ function companyLobby(){
   if(st.flags.lastEntrySlot!==0&&!late)return showChoices('🏢 '+l.company,'아침에는 정상 출근, 낮에는 지각 출근할 수 있습니다.',[['돌아가기',closePanel]]);
   return showChoices('🏢 '+l.company,late?'지각 출근입니다. 근무는 가능하지만 3회 누적 시 해고됩니다.':'정상 출근입니다. 아침부터 저녁까지 근무합니다.',[['업무 수행',()=>workShift(l,late)],['돌아가기',closePanel]]);
  }
- if(a&&a.status==='submitted')return showChoices('🏢 회사 면접 안내',a.company+' 입사지원서를 제출했습니다.',[['면접 보기',startInterview],['돌아가기',closePanel]]);
+ if(a&&a.status==='submitted'){
+  if(!a.interviewDay){a.interviewDay=st.day+1;phoneMessage(a.company+' 채용팀','면접 일정 안내: '+dateLabel(a.interviewDay)+' 회사에서 면접을 진행합니다.');}
+  if(st.day<a.interviewDay)return showChoices('🏢 면접 일정',a.company+' 면접 예정일은 '+dateLabel(a.interviewDay)+'입니다. 휴대폰 문자를 확인해 주세요.',[['돌아가기',closePanel]]);
+  return showChoices('🏢 회사 면접 안내',a.company+' 면접 일정입니다. 오늘 면접을 진행할 수 있습니다.',[['면접 보기',startInterview],['돌아가기',closePanel]]);
+ }
  if(a&&a.status==='interviewed')return showChoices('🏢 채용 진행 중','면접 결과는 7일 이내 문자로 안내됩니다.',[['돌아가기',closePanel]]);
  return showChoices('🏢 오피스 빌딩','여러 회사가 입주한 건물입니다. 입사지원은 집에서 가능합니다.',[['돌아가기',closePanel]]);
 }
@@ -129,15 +146,16 @@ function workShift(l,late){
 function jobSearch(){
  const l=ensureLife();
  if(l.employment==='hired')return showChoices('💻 취업 사이트','현재 '+l.company+'에 재직 중입니다. 직무: '+roleCareerSummary(l),[['돌아가기',closePanel]]);
- if(l.application&&['submitted','interviewed'].includes(l.application.status))return showChoices('💻 입사지원 현황',l.application.company+' · '+(jobRole(l.application.roleId)?.name||'직군 미지정')+' 채용 절차가 진행 중입니다.',[['돌아가기',closePanel]]);
- showChoices('💻 채용공고','지원할 회사를 선택하세요. (인터넷 연결: 집 Wi-Fi)',COMPANIES.map(c=>[c.name+' · '+c.industry,()=>selectJobRole(c)]).concat([['돌아가기',closePanel]]));
+ if(l.application&&['submitted','interviewed'].includes(l.application.status))return showChoices('💻 입사지원 현황',l.application.company+' · '+(jobRole(l.application.roleId)?.name||'직군 미지정')+' 채용 절차가 진행 중입니다.'+(l.application.status==='submitted'?'<br>면접 예정일: '+dateLabel(l.application.interviewDay||st.day+1):''),[['돌아가기',closePanel]]);
+ showChoices('💻 채용공고','지원할 회사를 선택하세요. (인터넷 연결: 집 Wi-Fi)<br>직무 숙련도가 높아질수록 지원 가능한 회사가 확대됩니다. 새로운 채용공고는 향후 추가됩니다.',COMPANIES.map(c=>[c.name+' · '+c.industry,()=>selectJobRole(c)]).concat([['돌아가기',closePanel]]));
 }
 function selectJobRole(company){
  const l=ensureLife(),xp=jobExperience(l);
  showChoices('💼 지원 직군 선택',company.name+'에서 지원할 직군을 선택하세요. 직군별 근무 경력은 이직 후에도 누적됩니다.',JOB_ROLES.map(r=>[r.name+' · Lv.'+jobLevel(xp[r.id]||0),()=>{
-  l.application={company:company.name,companyId:company.id,roleId:r.id,status:'submitted',submittedDay:st.day};
+  l.application={company:company.name,companyId:company.id,roleId:r.id,status:'submitted',submittedDay:st.day,interviewDay:st.day+1};
+  phoneMessage(company.name+' 채용팀','입사지원 접수 완료. '+r.name+' 직군 면접은 '+dateLabel(st.day+1)+'에 회사에서 진행됩니다.');
   st.logs.push(company.name+' '+r.name+' 입사지원서 제출');update();
-  showChoices('지원 완료',company.name+' · '+r.name+' 직군에 지원했습니다. 회사 건물에서 면접을 볼 수 있습니다.',[['확인',closePanel]]);
+  showChoices('지원 완료',company.name+' · '+r.name+' 직군에 지원했습니다. 면접 일정은 휴대폰 문자로 안내했습니다.',[['확인',closePanel]]);
  }]).concat([['회사 다시 선택',jobSearch]]));
 }
 function startInterview(){
@@ -201,6 +219,7 @@ function officeEvent(id){
  if(id==='office')return companyLobby();
  if(id==='hospital')return showChoices('🏥 병원','회사 옆 병원입니다. 응급 치료와 체력 회복을 받을 수 있습니다.',[['링거 치료 (70,000원 · 체력 완전 회복)',()=>{st.money-=70000;st.hp=100;st.logs.push('병원 링거 치료');update();showChoices('치료 완료','체력이 완전히 회복되었습니다.',[back])}],back]);
  if(id==='gym')return showChoices('🏋️ 헬스장','운동으로 건강을 관리하고 회사 동료를 만날 수 있습니다.',[['운동하기 (10,000원 · 기분 +10)',()=>purchase('헬스장 이용',10000,0,10)],['동료와 운동하기',()=>{if(blockedByDebt())return;st.relation++;st.mood=Math.min(100,st.mood+5);update();showChoices('운동 친구','회사 동료와 함께 운동했습니다.',[back])}],back]);
+ if(id==='library')return libraryVisit();
  if(id==='bookstore')return showChoices('📚 서점','업무에 도움 되는 책과 소설이 있습니다.',[['자기계발서 구매 (15,000원)',()=>purchase('자기계발서',15000)],['소설 구매 (12,000원)',()=>purchase('소설',12000,0,5)],back]);
  if(id==='restaurant')return showChoices('🍽️ 식당','회사 동료와 식사할 수 있는 식당입니다.',[['점심·저녁 식사 (12,000원 · 체력 +20)',()=>purchase('식사',12000,20,5,45)],back]);
  if(id==='pub')return showChoices('🍻 술집','퇴근 후 동료들과 이야기를 나눌 수 있는 곳입니다.',[['동료와 한잔하기 (18,000원 · 관계 +1)',()=>{if(blockedByDebt())return;if(st.money<18000)return showChoices('술집','돈이 부족합니다.',[back]);st.money-=18000;st.relation++;st.mood=Math.min(100,st.mood+8);st.logs.push('동료와 술자리');update();showChoices('술자리','동료와 가까워졌습니다.',[back])}],back]);
@@ -330,7 +349,7 @@ function visit(id){const l=(st.mapId==='office'?officeLocations:locations).find(
  const arrivalSlot=st.slot;
  if(debtLocked()&&!['house','office','hospital'].includes(id))return blockedByDebt();
  if(!isOpen(id,arrivalSlot)){showChoices('영업 종료',l.label+'은(는) 현재 이용할 수 없습니다. 영업시간에 다시 방문해 주세요.',[['확인',closePanel]]);return}
- st.flags.lastEntrySlot=arrivalSlot;st.flags.currentLocation=id;if(id!=='house'&&id!=='office')advance(1);st.visited=[...new Set([...st.visited,id])];persist();if(finishTimeConsequences())return;if(st.mapId==='office'){if(id==='office'&&arrivalSlot===2&&ensureLife().employment==='hired'&&st.day>=ensureLife().startDay)return lateOfficeEvent();return officeEvent(id)}
+ st.flags.lastEntrySlot=arrivalSlot;st.flags.currentLocation=id;if(id!=='house'&&id!=='office'&&id!=='library')advance(1);st.visited=[...new Set([...st.visited,id])];persist();if(finishTimeConsequences())return;if(st.mapId==='office'){if(id==='office'&&arrivalSlot===2&&ensureLife().employment==='hired'&&st.day>=ensureLife().startDay)return lateOfficeEvent();return officeEvent(id)}
 if(id==='starbucks')return debtLocked()?blockedByDebt():storyAtCafe();if(id==='house')return showChoices('🏠 '+st.name+'의 집','집에서는 Wi-Fi로 인터넷을 이용할 수 있습니다.',[['📺 TV 보기',watchTV],['인터넷으로 입사지원하기',jobSearch],['휴식하기 (체력 +20)',()=>{st.hp=Math.min(100,st.hp+20);endAction();showChoices('휴식 완료','몸이 한결 가벼워졌습니다.',[['돌아가기',closePanel]])}],['잠자기 (3때 경과 · 체력 +80)',()=>{sleepNextDay()}]]);if(id==='flower')return showChoices('💐 꽃집','화사한 꽃향기가 가득합니다.',[['꽃다발 구매 (12,000원)',()=>purchase('꽃다발',12000)],['동네로 돌아가기',closePanel]]);if(id==='cu')return showChoices('🏪 CU 편의점','오늘도 다양한 상품이 진열되어 있습니다.',[['생수 구매 (1,000원)',()=>purchase('생수',1000,3)],['도시락 구매 (5,500원 · 체력 +15)',()=>purchase('도시락',5500,15,0,35)],['햄버거 구매 (4,500원 · 체력 +10)',()=>purchase('햄버거',4500,10,0,25)],['빵 구매 (2,500원 · 체력 +10)',()=>purchase('빵',2500,10,0,20)],['동네로 돌아가기',closePanel]]);if(id==='gukbap')return showChoices('🍲 국밥집','진한 국물 냄새가 가게 안을 채웁니다.',[['국밥 먹기 (9,000원 · 체력 +20)',()=>purchase('국밥',9000,20,5,45)],['동네로 돌아가기',closePanel]]);if(id==='park')return showChoices('🌳 동네 공원','벚꽃잎이 바람에 흩날립니다.',[['산책하기 (기분 +10, 1때)',()=>{st.mood=Math.min(100,st.mood+10);endAction();showChoices('산책 완료','기분 좋은 바람을 맞으며 산책했습니다.',[['돌아가기',closePanel]])}],['동네로 돌아가기',closePanel]]);if(id==='pet')return showChoices('🐶 애견샵','귀여운 강아지들이 반갑게 맞이합니다.',[['강아지 구경하기 (기분 +5)',()=>{st.mood=Math.min(100,st.mood+5);endAction();showChoices('애견샵','강아지가 꼬리를 흔듭니다. 언젠가 반려동물을 키워볼까요?',[['돌아가기',closePanel]])}],['동네로 돌아가기',closePanel]]);if(id==='bus')return showChoices('🚌 버스정류장','회사까지 편도 1,800원입니다.',[['회사로 이동 (1,800원)',()=>travel('office','bus',arrivalSlot)],['동네로 돌아가기',closePanel]]);if(id==='taxi')return showChoices('🚕 택시','회사까지 요금 '+taxiFare(arrivalSlot).toLocaleString()+'원입니다.',[['회사로 이동',()=>travel('office','taxi',arrivalSlot)],['동네로 돌아가기',closePanel]])}
 function watchTV(){const d=gameDate();showChoices('📺 TV · '+d.getUTCFullYear()+'년 '+(d.getUTCMonth()+1)+'월 주요 뉴스','아직 해당 월의 주요 뉴스가 등록되지 않았습니다.',[['집으로 돌아가기',()=>visit('house')],['TV 끄기',closePanel]])}
 function schedule(){const l=ensureLife(),c=l.employment==='hired'?career(l):null;showChoices('📅 일정','현재 상태: '+(l.employment==='hired'?l.company+' 재직':'구직 중')+' · 다음 정산일: '+dateLabel(monthEndDay())+(c?'<br>직군 경력: '+roleCareerSummary(l):'')+(c?'<br>직급: '+(c.rank?'승진 직원':'신입 직원')+'<br>현 직장 근무: '+c.workDays+'/365일<br>현 직장 야근: '+c.overtimeDays+'/200일<br>승진 조건: 둘 중 하나 달성 (동일 회사 재직 기준)':''), [['이번 달 말 지출 예정',()=>showExpenseForecast(schedule)],['확인',closePanel]])}
@@ -352,5 +371,17 @@ const DAY_MAP='assets/maps/town-map.png',EVENING_MAP='assets/maps/town-map-eveni
 const OFFICE_DAY='assets/maps/office-map.png',OFFICE_EVENING='assets/maps/office-map-evening.png';
 let eveningReady=false;
 const eveningProbe=new Image();eveningProbe.onload=()=>{eveningReady=true;refreshTownVisual()};eveningProbe.onerror=()=>{eveningReady=false};eveningProbe.src=EVENING_MAP;
-function refreshTownVisual(){const evening=st.slot>=3;const path=st.mapId==='office'?(evening?OFFICE_EVENING:OFFICE_DAY):(evening&&eveningReady?EVENING_MAP:DAY_MAP);const el=$('scene');if(el)el.style.backgroundImage='url("'+path+'")';const hint=document.querySelector('.footerHint');if(hint)hint.textContent='📍 '+areaLabel(st.mapId)+' · 건물 이름을 눌러 방문하세요'}
+let mapLoadToken=0;
+function refreshTownVisual(){
+ const evening=st.slot>=3,path=st.mapId==='office'?(evening?OFFICE_EVENING:OFFICE_DAY):(evening&&eveningReady?EVENING_MAP:DAY_MAP);
+ const el=$('scene');if(!el)return;
+ const token=++mapLoadToken;
+ el.style.backgroundColor='#45564d';
+ el.style.backgroundImage='url("'+path+'?v=370")';
+ const img=new Image();
+ img.onload=()=>{if(token!==mapLoadToken)return;el.classList.add('loaded');el.classList.remove('fallback');el.style.backgroundImage='url("'+path+'?v=370")'};
+ img.onerror=()=>{if(token!==mapLoadToken)return;el.classList.remove('loaded');el.classList.add('fallback');el.style.backgroundColor='#596a59';el.style.backgroundImage='url("'+DAY_MAP+'?v=370")'};
+ img.src=path+'?v=370';
+ const hint=document.querySelector('.footerHint');if(hint)hint.textContent='📍 '+areaLabel(st.mapId)+' · 건물 이름을 눌러 방문하세요';
+}
 const probe=new Image();probe.onload=()=>{$('scene').classList.remove('fallback');$('scene').classList.add('loaded')};probe.onerror=()=>{$('mapStatus').textContent='⚠️ town-map.png 이미지를 불러오지 못했습니다. GitHub assets 폴더에서 파일을 확인해 주세요.'};probe.src='assets/maps/town-map.png?map=20261110b';renderSpots();update();refreshTownVisual();ensureLife();if(!st.name)nameStart();
