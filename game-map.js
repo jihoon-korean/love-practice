@@ -58,6 +58,24 @@ const INTERVIEW_QUESTIONS=[
  {q:'입사 후 어떤 직원으로 성장하고 싶습니까?',answers:[['성과를 만들고 팀에 기여하는 직원',2],['맡은 업무를 꾸준히 수행하는 직원',1],['가능하면 책임이 적은 직원',-1]]}
 ];
 const COMPANIES=[{id:'haneul',name:'하늘소프트',industry:'IT·서비스',average:INDUSTRY_AVG_SALARY},{id:'mirae',name:'미래마케팅',industry:'광고·마케팅',average:34000000},{id:'sejong',name:'세종유통',industry:'유통·영업',average:32000000}];
+const PROMOTION_OVERTIME=200,PROMOTION_WORKDAYS=365;
+function career(l=ensureLife()){
+ if(!l.career||l.career.company!==l.company||l.career.startDay!==l.startDay){
+  l.career={company:l.company,startDay:l.startDay,workDays:0,overtimeDays:0,rank:0,promotions:[]};
+  if(l.employment==='hired'&&Array.isArray(l.attended))l.career.workDays=l.attended.filter(d=>d>=l.startDay&&d<=st.day).length;
+ }
+ return l.career;
+}
+function checkPromotion(l,reason){
+ const c=career(l);
+ if(c.rank>0)return false;
+ if(c.overtimeDays<PROMOTION_OVERTIME&&c.workDays<PROMOTION_WORKDAYS)return false;
+ c.rank=1;c.promotions.push({day:st.day,reason,company:l.company});
+ const why=c.overtimeDays>=PROMOTION_OVERTIME?'야근 200일':'근무 365일';
+ st.logs.push(dateLabel()+' '+l.company+' 승진 ('+why+')');
+ phoneMessage(l.company+' 인사팀','축하합니다! 동일 회사에서 '+why+' 기준을 충족해 승진했습니다.');
+ return true;
+}
 function companyLobby(){
  const l=ensureLife(),a=l.application;
  if(l.employment==='hired'){
@@ -74,17 +92,19 @@ function companyLobby(){
 function workShift(l,late){
  if(l.attended.includes(st.day))return companyLobby();
  const workDay=st.day;l.attended.push(workDay);
+ const c=career(l);c.workDays++;
  earningsLedger().push({day:workDay,company:l.company,amount:l.monthlyPay||70000,paid:false});
  st.logs.push(dateLabel(workDay)+' '+l.company+(late?' 지각 출근':' 정상 출근'));
  if(late)l.lateCount=(l.lateCount||0)+1;
  if(st.slot<3)advance(3-st.slot,{rest:true});
  st.hp=Math.max(0,st.hp-20);
  if(late&&l.lateCount>=3){
-  const company=l.company;l.employment='unemployed';l.company=null;l.application=null;l.startDay=null;l.lateCount=0;
+  const company=l.company;l.employment='unemployed';l.company=null;l.application=null;l.startDay=null;l.lateCount=0;l.career=null;
   phoneMessage(company+' 인사팀','지각 누적 3회로 해고되었습니다. 근무한 날짜의 급여는 월말 정산됩니다.');
   update();return showChoices('🏢 해고 통보','지각 출근 3회 누적으로 해고되었습니다. 오늘 근무는 급여에 포함됩니다.',[['퇴근하기',closePanel]]);
  }
- update();showChoices('🏢 근무 종료','저녁이 되었습니다. 오늘의 근무 급여가 적립되었습니다.'+(late?' 지각 누적 '+l.lateCount+'/3회.':''),[['정시 퇴근하기',closePanel],['야근하기 (체력 -40)',()=>{st.hp=Math.max(0,st.hp-40);advance(1,{rest:true});st.logs.push(dateLabel(workDay)+' 야근 (체력 -40)');update();if(st.hp===0){st.flags.hospitalPending=true;if(finishTimeConsequences())return;}showChoices('🌙 야근 종료','야근을 마치니 밤이 되었습니다. 체력이 40 감소했습니다.',[['회사 밖으로 나가기',closePanel]])}]]);
+ const promoted=checkPromotion(l,'work');
+ update();showChoices('🏢 근무 종료','저녁이 되었습니다. 오늘의 근무 급여가 적립되었습니다.'+(promoted?' 🎉 승진했습니다!':'')+(late?' 지각 누적 '+l.lateCount+'/3회.':''),[['정시 퇴근하기',closePanel],['야근하기 (체력 -40)',()=>{st.hp=Math.max(0,st.hp-40);advance(1,{rest:true});st.logs.push(dateLabel(workDay)+' 야근 (체력 -40)');const c=career(l);if(c.lastOvertimeDay!==workDay){c.overtimeDays++;c.lastOvertimeDay=workDay;}const promoted=checkPromotion(l,'overtime');update();if(st.hp===0){st.flags.hospitalPending=true;if(finishTimeConsequences())return;}showChoices('🌙 야근 종료','야근을 마치니 밤이 되었습니다. 체력이 40 감소했습니다.'+(promoted?' 🎉 승진했습니다!':''),[['회사 밖으로 나가기',closePanel]])}]]);
 }
 function jobSearch(){
  const l=ensureLife();
@@ -202,7 +222,7 @@ function employmentTick(){
  const l=ensureLife(),a=l.application;
  if(a&&a.status==='interviewed'&&st.day>=a.resultDay){
   a.status=a.passed?'accepted':'rejected';
-  if(a.passed){l.employment='hired';l.company=a.company;l.monthlyPay=Math.round(a.offer/260/1000)*1000;l.startDay=st.day+1;phoneMessage(a.company+' 인사팀','최종 합격을 축하드립니다. '+(st.day+1)+'일차부터 출근해 주세요.');}
+  if(a.passed){l.employment='hired';l.company=a.company;l.monthlyPay=Math.round(a.offer/260/1000)*1000;l.startDay=st.day+1;l.career=null;l.lateCount=0;phoneMessage(a.company+' 인사팀','최종 합격을 축하드립니다. '+(st.day+1)+'일차부터 출근해 주세요.');}
   else{l.employment='unemployed';phoneMessage(a.company+' 인사팀','안타깝게도 이번 채용에는 함께하지 못하게 되었습니다.');}
  }
 }
@@ -284,7 +304,7 @@ function visit(id){const l=(st.mapId==='office'?officeLocations:locations).find(
  st.flags.lastEntrySlot=arrivalSlot;st.flags.currentLocation=id;if(id!=='house'&&id!=='office')advance(1);st.visited=[...new Set([...st.visited,id])];persist();if(finishTimeConsequences())return;if(st.mapId==='office'){if(id==='office'&&arrivalSlot===2&&ensureLife().employment==='hired'&&st.day>=ensureLife().startDay)return lateOfficeEvent();return officeEvent(id)}
 if(id==='starbucks')return debtLocked()?blockedByDebt():storyAtCafe();if(id==='house')return showChoices('🏠 '+st.name+'의 집','집에서는 Wi-Fi로 인터넷을 이용할 수 있습니다.',[['📺 TV 보기',watchTV],['인터넷으로 입사지원하기',jobSearch],['휴식하기 (체력 +20)',()=>{st.hp=Math.min(100,st.hp+20);endAction();showChoices('휴식 완료','몸이 한결 가벼워졌습니다.',[['돌아가기',closePanel]])}],['잠자기 (3때 경과 · 체력 +80)',()=>{sleepNextDay()}]]);if(id==='flower')return showChoices('💐 꽃집','화사한 꽃향기가 가득합니다.',[['꽃다발 구매 (12,000원)',()=>purchase('꽃다발',12000)],['동네로 돌아가기',closePanel]]);if(id==='cu')return showChoices('🏪 CU 편의점','오늘도 다양한 상품이 진열되어 있습니다.',[['생수 구매 (1,000원)',()=>purchase('생수',1000,3)],['도시락 구매 (5,500원 · 체력 +15)',()=>purchase('도시락',5500,15,0,35)],['햄버거 구매 (4,500원 · 체력 +10)',()=>purchase('햄버거',4500,10,0,25)],['빵 구매 (2,500원 · 체력 +10)',()=>purchase('빵',2500,10,0,20)],['동네로 돌아가기',closePanel]]);if(id==='gukbap')return showChoices('🍲 국밥집','진한 국물 냄새가 가게 안을 채웁니다.',[['국밥 먹기 (9,000원 · 체력 +20)',()=>purchase('국밥',9000,20,5,45)],['동네로 돌아가기',closePanel]]);if(id==='park')return showChoices('🌳 동네 공원','벚꽃잎이 바람에 흩날립니다.',[['산책하기 (기분 +10, 1때)',()=>{st.mood=Math.min(100,st.mood+10);endAction();showChoices('산책 완료','기분 좋은 바람을 맞으며 산책했습니다.',[['돌아가기',closePanel]])}],['동네로 돌아가기',closePanel]]);if(id==='pet')return showChoices('🐶 애견샵','귀여운 강아지들이 반갑게 맞이합니다.',[['강아지 구경하기 (기분 +5)',()=>{st.mood=Math.min(100,st.mood+5);endAction();showChoices('애견샵','강아지가 꼬리를 흔듭니다. 언젠가 반려동물을 키워볼까요?',[['돌아가기',closePanel]])}],['동네로 돌아가기',closePanel]]);if(id==='bus')return showChoices('🚌 버스정류장','회사까지 편도 1,800원입니다.',[['회사로 이동 (1,800원)',()=>travel('office','bus',arrivalSlot)],['동네로 돌아가기',closePanel]]);if(id==='taxi')return showChoices('🚕 택시','회사까지 요금 '+taxiFare(arrivalSlot).toLocaleString()+'원입니다.',[['회사로 이동',()=>travel('office','taxi',arrivalSlot)],['동네로 돌아가기',closePanel]])}
 function watchTV(){const d=gameDate();showChoices('📺 TV · '+d.getUTCFullYear()+'년 '+(d.getUTCMonth()+1)+'월 주요 뉴스','아직 해당 월의 주요 뉴스가 등록되지 않았습니다.',[['집으로 돌아가기',()=>visit('house')],['TV 끄기',closePanel]])}
-function schedule(){const l=ensureLife();showChoices('📅 일정','현재 상태: '+(l.employment==='hired'?l.company+' 재직':'구직 중')+' · 다음 정산일: '+dateLabel(monthEndDay()), [['이번 달 말 지출 예정',()=>showExpenseForecast(schedule)],['확인',closePanel]])}
+function schedule(){const l=ensureLife(),c=l.employment==='hired'?career(l):null;showChoices('📅 일정','현재 상태: '+(l.employment==='hired'?l.company+' 재직':'구직 중')+' · 다음 정산일: '+dateLabel(monthEndDay())+(c?'<br>직급: '+(c.rank?'승진 직원':'신입 직원')+'<br>현 직장 근무: '+c.workDays+'/365일<br>현 직장 야근: '+c.overtimeDays+'/200일<br>승진 조건: 둘 중 하나 달성 (동일 회사 재직 기준)':''), [['이번 달 말 지출 예정',()=>showExpenseForecast(schedule)],['확인',closePanel]])}
 function people(){show('💗 인물 관계','<p>한서윤 · 카페 바리스타</p><p>호감도: '+st.relation+'</p><p>대화 진행: '+st.stage+'/3</p>')}
 function inventory(){show('👜 가방','<p>소지금: '+st.money.toLocaleString()+'원</p><p>소지품: '+(st.items.join(', ')||'없음')+'</p>')}
 function journal(){show('📒 기록',st.logs.length?st.logs.map((v,i)=>'<p>'+(i+1)+'. '+v.replace(/</g,'&lt;')+'</p>').join(''):'<p>아직 기록이 없습니다.</p>')}
