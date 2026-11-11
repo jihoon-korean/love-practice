@@ -187,7 +187,8 @@ function phone(){
 }
 function openInternetApp(app){if(!canUseData(st.mapId==='town'&&st.flags.currentLocation==='house'))return;showChoices('🌐 '+app,app==='메일'?'새로운 이메일이 없습니다.':'동영상 서비스를 둘러봤습니다. 모바일 데이터 0.1GB가 사용될 수 있습니다.',[['휴대폰으로',phone]])}
 function phonePlans(){
- const l=ensureLife();showChoices('📶 휴대폰 요금제','요금제 변경은 다음 정기 청구일부터 반영됩니다.',Object.entries(PHONE_PLANS).map(([id,p])=>[p.name+' · 월 '+p.fee.toLocaleString()+'원 · '+(p.data===Infinity?'무제한':p.data+'GB'),()=>{l.phonePlan=id;update();showChoices('요금제 변경',p.name+' 요금제로 변경했습니다. 다음 청구일에 해당 요금이 적용됩니다.',[['휴대폰으로',phone]])}]).concat([['휴대폰으로',phone]]));
+ const l=ensureLife(),current=PHONE_PLANS[l.phonePlan]||PHONE_PLANS.basic;
+ showChoices('📶 휴대폰 요금제','현재 사용 중: '+current.name+' · 월 '+current.fee.toLocaleString()+'원<br>모든 요금제에 문자·통화 기본 제공. 변경한 요금은 다음 정기 청구일부터 적용됩니다.',Object.entries(PHONE_PLANS).map(([id,p])=>[(id===l.phonePlan?'✓ 사용 중 · ':'')+p.name+' · 월 '+p.fee.toLocaleString()+'원 · '+(p.data===Infinity?'데이터 무제한':p.data===0?'데이터 없음':'데이터 '+p.data+'GB')+' · 문자·통화 기본',()=>{if(id===l.phonePlan)return showChoices('📶 현재 요금제',p.name+' 요금제를 사용 중입니다.',[['요금제 목록',phonePlans],['휴대폰으로',phone]]);l.phonePlan=id;update();showChoices('요금제 변경',p.name+' 요금제로 변경했습니다. 다음 청구일에 해당 요금이 적용됩니다.',[['휴대폰으로',phone]])}]).concat([['휴대폰으로',phone]]));
 }
 function canUseData(wifi=st.mapId==='town'){
  const l=ensureLife(),p=PHONE_PLANS[l.phonePlan]||PHONE_PLANS.basic;
@@ -334,7 +335,15 @@ if(id==='starbucks')return debtLocked()?blockedByDebt():storyAtCafe();if(id==='h
 function watchTV(){const d=gameDate();showChoices('📺 TV · '+d.getUTCFullYear()+'년 '+(d.getUTCMonth()+1)+'월 주요 뉴스','아직 해당 월의 주요 뉴스가 등록되지 않았습니다.',[['집으로 돌아가기',()=>visit('house')],['TV 끄기',closePanel]])}
 function schedule(){const l=ensureLife(),c=l.employment==='hired'?career(l):null;showChoices('📅 일정','현재 상태: '+(l.employment==='hired'?l.company+' 재직':'구직 중')+' · 다음 정산일: '+dateLabel(monthEndDay())+(c?'<br>직군 경력: '+roleCareerSummary(l):'')+(c?'<br>직급: '+(c.rank?'승진 직원':'신입 직원')+'<br>현 직장 근무: '+c.workDays+'/365일<br>현 직장 야근: '+c.overtimeDays+'/200일<br>승진 조건: 둘 중 하나 달성 (동일 회사 재직 기준)':''), [['이번 달 말 지출 예정',()=>showExpenseForecast(schedule)],['확인',closePanel]])}
 function people(){show('💗 인물 관계','<p>한서윤 · 카페 바리스타</p><p>호감도: '+st.relation+'</p><p>대화 진행: '+st.stage+'/3</p>')}
-function inventory(){show('👜 가방','<p>소지금: '+st.money.toLocaleString()+'원</p><p>소지품: '+(st.items.join(', ')||'없음')+'</p>')}
+function inventory(){
+ const items=Array.isArray(st.items)?st.items:[],counts=new Map();
+ for(const item of items){const name=String(item);counts.set(name,(counts.get(name)||0)+1)}
+ const entries=[...counts.entries()],slots=Math.max(24,Math.ceil(entries.length/6)*6);
+ show('👜 가방','<div class="inventory-info">💰 소지금 <strong>'+st.money.toLocaleString()+'원</strong>　 ·　 소지품 '+items.length+'개 / '+slots+'칸</div><div class="inventory-grid" id="inventoryGrid" aria-label="소지품 목록"></div><p class="inventory-hint">소지품 칸을 누르면 물품 이름과 보유 수량을 확인할 수 있습니다.</p><div class="options"><button id="inventoryBack">닫기</button></div>');
+ const root=$('inventoryGrid');
+ for(let i=0;i<slots;i++){const entry=entries[i],slot=document.createElement('button');slot.className='inventory-slot';slot.type='button';if(entry){const [name,qty]=entry;slot.textContent='🎒';const title=document.createElement('span');title.className='inventory-item-name';title.textContent=name;slot.append(title);if(qty>1){const badge=document.createElement('span');badge.className='inventory-qty';badge.textContent='×'+qty;slot.append(badge)}slot.onclick=()=>showChoices('🎒 '+name,'보유 수량: '+qty+'개. 현재는 소지품 확인 기능만 지원합니다.',[['가방으로 돌아가기',inventory],['닫기',closePanel]])}else{slot.disabled=true;slot.setAttribute('aria-label','빈 칸')}root.append(slot)}
+ $('inventoryBack').onclick=closePanel;
+}
 function journal(){show('📒 기록',st.logs.length?st.logs.map((v,i)=>'<p>'+(i+1)+'. '+v.replace(/</g,'&lt;')+'</p>').join(''):'<p>아직 기록이 없습니다.</p>')}
 function settings(){show('⚙️ 설정','<p>이름: '+(st.name||'미설정')+'</p><p>자동 저장: 켜짐</p><p><button onclick="save()">저장</button><button onclick="reset()">새 게임</button></p>')}
 function reset(){if(confirm('기존 진행 기록을 초기화하고 새 게임을 시작할까요?')){st=defaultState();update();nameStart()}}
