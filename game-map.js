@@ -71,7 +71,6 @@ function studyExperience(l=ensureLife()){if(!l.studyExperience||typeof l.studyEx
 function libraryVisit(){
  const l=ensureLife(),xp=jobExperience(l),study=studyExperience(l);
  showChoices('📚 도서관 · 직무 공부','독서에 시간 2칸이 필요합니다. 분야를 선택하면 직무역량이 10점 상승합니다. 공부한 역량은 이직 후에도 유지되며, 높은 숙련도는 향후 더 많은 회사 지원에 활용됩니다.',JOB_ROLES.map(r=>[r.name+' · 역량 '+(study[r.id]||0),()=>{
-  if(st.slot+2>=6&&st.day===monthEndDay()&&false)return;
   advance(2,{rest:true});study[r.id]=(study[r.id]||0)+10;
   st.hp=Math.max(0,st.hp-5);
   st.logs.push(dateLabel()+' 도서관 '+r.name+' 공부 · 직무역량 +10');
