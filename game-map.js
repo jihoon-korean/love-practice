@@ -185,7 +185,20 @@ function button(label,fn){const b=document.createElement('button');b.textContent
 function showChoices(title,description,options){show(title,'<p>'+description+'</p><div class="options" id="options"></div>');const root=$('options');for(const [label,cb] of options)root.append(button(label,cb))}
 function home(){st.flags.currentLocation=null;closePanel();refreshTownVisual();renderSpots()}
 function renderSpots(){const el=$('spots');el.replaceChildren();for(const l of (st.mapId==='office'?officeLocations:locations)){const b=document.createElement('button');b.className='spot';b.textContent=l.label;b.style.left=l.x+'%';b.style.top=l.y+'%';b.onclick=()=>visit(l.id);el.append(b)}}
-function nameStart(){show('🏠 새로운 동네에서의 시작','<p>게임에서 사용할 주인공 이름을 정해주세요. <strong>최대 4글자</strong>입니다.</p><input id="newName" maxlength="4" placeholder="이름 입력" autocomplete="off"><p><button id="nameGo">게임 시작하기</button></p>');$('nameGo').onclick=()=>{const v=Array.from($('newName').value.trim());if(!v.length||v.length>4){alert('이름은 1~4글자로 입력해 주세요.');return}st.name=v.join('');update();closePanel()}}
+function nameStart(){show('🏠 새로운 동네에서의 시작','<p>게임에서 사용할 주인공 이름을 정해주세요. <strong>최대 4글자</strong>입니다.</p><input id="newName" maxlength="4" placeholder="이름 입력" autocomplete="off"><p><button id="nameGo">게임 시작하기</button></p>');$('nameGo').onclick=()=>{const v=Array.from($('newName').value.trim());if(!v.length||v.length>4){alert('이름은 1~4글자로 입력해 주세요.');return}st.name=v.join('');update();showOpeningStory()}}
+function showOpeningStory(){
+ const name=(st.name||'주인공').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ showChoices('서울, 첫 번째 날',
+  '스물여덟 살, '+name+'. 지방에서 살던 나는 새로운 삶을 꿈꾸며 서울에 올라왔다.\n\n아직 직장은 없다. 아는 사람도 많지 않다. 손에 쥔 돈은 200만 원, 그리고 작은 집 한 칸.\n\n낯선 도시에서 무엇부터 시작해야 할까?',
+  [['이곳에서 내 인생을 시작한다',showOpeningDecision]]);
+}
+function showOpeningDecision(){
+ showChoices('사람연습 · 인생의 시작',
+  '이곳에서 나의 파란만장한 인생이 시작된다.\n\n취업을 할 것인가? 사람을 만날 것인가? 아니면 당장 오늘을 즐길 것인가?\n\n당신은 어떻게 할 것인가?',
+  [['집에서 일자리를 찾아본다',()=>{closePanel();jobSearch()}],
+   ['먼저 동네를 둘러본다',()=>{closePanel();renderSpots()}],
+   ['휴대폰부터 확인한다',()=>{closePanel();phone()}]]);
+}
 const SEOYOON_PORTRAIT='assets/characters/seoyoon/normal.png';
 function seoyoonFace(){return '<div class="face character-face"><img src="'+SEOYOON_PORTRAIT+'" alt="카페 바리스타 한서윤" loading="eager" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'grid\'"><span class="face-fallback" style="display:none">👩🏻</span></div>'}
 function seoyoonReply(message,options){show('☕ 카페 · 한서윤','<div class="event">'+seoyoonFace()+'<div class="story"><div class="sub">한서윤 · 바리스타</div><p>'+message+'</p><div class="options" id="options"></div></div></div>');$('wrap').classList.add('cafe-mode');for(const [label,callback] of options)$('options').append(button(label,callback))}
