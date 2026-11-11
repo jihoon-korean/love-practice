@@ -66,7 +66,7 @@ const JOB_ROLES=[
  {id:'design',name:'디자인',description:'화면과 콘텐츠를 디자인하는 업무'},
  {id:'management',name:'경영지원',description:'인사·총무·회계 등 회사 운영 업무'}
 ];
-const JOB_LEVEL_DAYS=[0,30,100,250,500,1000];
+const JOB_LEVEL_DAYS=[0,75,250,625,1250,2500];
 function jobRole(id){return JOB_ROLES.find(r=>r.id===id)}
 function jobExperience(l=ensureLife()){
  if(!l.jobExperience||typeof l.jobExperience!=='object')l.jobExperience={};
