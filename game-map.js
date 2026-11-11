@@ -99,11 +99,12 @@ function phone(){
  ['문자함 ('+l.messages.length+')',()=>{l.messages.forEach(m=>m.read=true);showChoices('✉️ 문자함',l.messages.length?l.messages.slice(0,12).map(m=>m.day+'일차 ['+m.sender+'] '+m.body).join('　|　'):'도착한 문자가 없습니다.',[['휴대폰으로',phone]])}],
  ['연락처',()=>showChoices('📇 연락처',l.contacts.length?l.contacts.join(', '):'아직 저장된 연락처가 없습니다. 앞으로 등장인물과 친해지면 연락처를 받을 수 있습니다.',[['휴대폰으로',phone]])],
  ['요금제 변경',phonePlans],
- ['메일·인터넷',()=>{if(!canUseData(false))return;showChoices('🌐 인터넷','집에서는 Wi-Fi를 사용할 수 있습니다. 이동 중에는 요금제와 데이터 잔량에 따라 제한됩니다.',[['휴대폰으로',phone]])}],
+ ['이메일',()=>openInternetApp('메일')],['유튜브',()=>openInternetApp('유튜브')],
  ['돌아가기',closePanel]]);
 }
+function openInternetApp(app){if(!canUseData(st.mapId==='town'))return;showChoices('🌐 '+app,app==='메일'?'새로운 이메일이 없습니다.':'동영상 서비스를 둘러봤습니다. 모바일 데이터 0.1GB가 사용될 수 있습니다.',[['휴대폰으로',phone]])}
 function phonePlans(){
- const l=ensureLife();showChoices('📶 휴대폰 요금제','요금제 변경은 다음 정기 청구일부터 반영됩니다.',Object.entries(PHONE_PLANS).map(([id,p])=>[p.name+' · 월 '+p.fee.toLocaleString()+'원 · '+(p.data===Infinity?'무제한':p.data+'GB'),()=>{l.phonePlan=id;update();showChoices('요금제 변경',p.name+' 요금제로 변경했습니다.',[['휴대폰으로',phone]])}]).concat([['휴대폰으로',phone]]));
+ const l=ensureLife();showChoices('📶 휴대폰 요금제','요금제 변경은 다음 정기 청구일부터 반영됩니다.',Object.entries(PHONE_PLANS).map(([id,p])=>[p.name+' · 월 '+p.fee.toLocaleString()+'원 · '+(p.data===Infinity?'무제한':p.data+'GB'),()=>{l.phonePlan=id;update();showChoices('요금제 변경',p.name+' 요금제로 변경했습니다. 다음 청구일에 해당 요금이 적용됩니다.',[['휴대폰으로',phone]])}]).concat([['휴대폰으로',phone]]));
 }
 function canUseData(wifi=st.mapId==='town'){
  const l=ensureLife(),p=PHONE_PLANS[l.phonePlan]||PHONE_PLANS.basic;
@@ -155,7 +156,7 @@ function employmentTick(){
  const l=ensureLife(),a=l.application;
  if(a&&a.status==='interviewed'&&st.day>=a.resultDay){
   a.status=a.passed?'accepted':'rejected';
-  if(a.passed){l.employment='hired';l.company=a.company;l.monthlyPay=Math.round(a.offer/365/1000)*1000;l.startDay=st.day+1;phoneMessage(a.company+' 인사팀','최종 합격을 축하드립니다. '+(st.day+1)+'일차부터 출근해 주세요.');}
+  if(a.passed){l.employment='hired';l.company=a.company;l.monthlyPay=Math.round(a.offer/260/1000)*1000;l.startDay=st.day+1;phoneMessage(a.company+' 인사팀','최종 합격을 축하드립니다. '+(st.day+1)+'일차부터 출근해 주세요.');}
   else{l.employment='unemployed';phoneMessage(a.company+' 인사팀','안타깝게도 이번 채용에는 함께하지 못하게 되었습니다.');}
  }
 }
