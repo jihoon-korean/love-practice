@@ -8,7 +8,7 @@ const HOME_MAP_ID='town',BUS_FARE=1800,TAXI_FARE_DAY=8000,TAXI_FARE_NIGHT=20000;
 const OPEN_HOURS={house:[0,1,2,3,4,5],flower:[0,1,2,3],starbucks:[0,1,2,3],gukbap:[0,1,2,3,4,5],park:[0,1,2,3,4,5],pet:[0,1,2,3],cu:[0,1,2,3,4,5],bus:[0,1,2,3],taxi:[0,1,2,3,4,5]};
 function isOpen(id,slot=st.slot){return (OPEN_HOURS[id]||[]).includes(slot)}
 const PHONE_PLANS={light:{name:'라이트',fee:12000,data:0},basic:{name:'베이직',fee:29000,data:2},super:{name:'슈퍼',fee:59000,data:Infinity}};
-const MONTHLY_RENT=450000,MONTHLY_UTILITIES=90000,INDUSTRY_AVG_SALARY=36000000;
+const MONTHLY_RENT=800000,MONTHLY_UTILITIES=90000,INDUSTRY_AVG_SALARY=36000000;
 function ensureLife(){st.flags=st.flags||{};if(!st.flags.life){st.flags.life={employment:'unemployed',company:null,application:null,interview:null,phonePlan:'basic',dataUsed:0,contacts:[],messages:[],lastBillsDay:0,lastSalaryDay:0,attended:[],monthlyPay:0};}return st.flags.life}
 function phoneMessage(sender,body){const l=ensureLife();l.messages.unshift({sender,body,day:st.day,read:false});st.logs.push('📱 '+sender+' 문자 도착');persist()}
 function debtLocked(){return st.money<0}
@@ -93,12 +93,25 @@ function finishInterview(offer,average){
  a.passed=seed/100<chance;a.offer=offer;a.chance=Math.round(chance*100);a.resultDay=st.day+1+((st.day+a.score+offer/1000000)%7+7)%7;a.status='interviewed';
  update();showChoices('면접 종료','면접이 끝났습니다. 채용 결과는 7일 이내 휴대폰 문자로 통보됩니다.',[['확인',closePanel]]);
 }
+function monthlyExpenseForecast(){
+ const l=ensureLife(),plan=PHONE_PLANS[l.phonePlan]||PHONE_PLANS.basic;
+ const nextDay=(Math.floor(st.day/30)+1)*30;
+ const total=MONTHLY_RENT+MONTHLY_UTILITIES+plan.fee;
+ const fmt=n=>n.toLocaleString()+'원';
+ const expectedSalary=l.employment==='hired'?l.attended.filter(d=>d>nextDay-30&&d<=nextDay).length*(l.monthlyPay||70000):0;
+ const forecast='다음 정산일: '+nextDay+'일차\\n월세: '+fmt(MONTHLY_RENT)+'\\n공과금: '+fmt(MONTHLY_UTILITIES)+'\\n휴대폰 ('+plan.name+'): '+fmt(plan.fee)+'\\n고정지출 합계: '+fmt(total)+'\\n현재 소지금: '+fmt(st.money)+'\\n현재 출근 기록 기준 예상 급여: '+fmt(expectedSalary)+'\\n예상 정산 후 잔액: '+fmt(st.money+expectedSalary-total);
+ return forecast;
+}
+function showExpenseForecast(back=phone){
+ showChoices('💳 이번 달 말 지출 예정',monthlyExpenseForecast(),[['돌아가기',back]]);
+}
 function phone(){
  const l=ensureLife(),plan=PHONE_PLANS[l.phonePlan]||PHONE_PLANS.basic;
  showChoices('📱 휴대폰','요금제: '+plan.name+' · 데이터 '+(plan.data===Infinity?'무제한':plan.data+'GB')+' · 이번 달 사용 '+l.dataUsed.toFixed(1)+'GB',[
  ['문자함 ('+l.messages.length+')',()=>{l.messages.forEach(m=>m.read=true);showChoices('✉️ 문자함',l.messages.length?l.messages.slice(0,12).map(m=>m.day+'일차 ['+m.sender+'] '+m.body).join('　|　'):'도착한 문자가 없습니다.',[['휴대폰으로',phone]])}],
  ['연락처',()=>showChoices('📇 연락처',l.contacts.length?l.contacts.join(', '):'아직 저장된 연락처가 없습니다. 앞으로 등장인물과 친해지면 연락처를 받을 수 있습니다.',[['휴대폰으로',phone]])],
  ['요금제 변경',phonePlans],
+ ['이번 달 말 지출 예정',()=>showExpenseForecast(phone)],
  ['이메일',()=>openInternetApp('메일')],['유튜브',()=>openInternetApp('유튜브')],
  ['돌아가기',closePanel]]);
 }
@@ -189,7 +202,7 @@ function nameStart(){show('🏠 새로운 동네에서의 시작','<p>게임에�
 function showOpeningStory(){
  const name=(st.name||'주인공').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  showChoices('서울, 첫 번째 날',
-  '스물여덟 살, '+name+'. 지방에서 살던 나는 새로운 삶을 꿈꾸며 서울에 올라왔다.\n\n아직 직장은 없다. 아는 사람도 많지 않다. 손에 쥔 돈은 200만 원, 그리고 작은 집 한 칸.\n\n낯선 도시에서 무엇부터 시작해야 할까?',
+  '스물여덟 살, '+name+'. 지방에서 살던 나는 새로운 삶을 꿈꾸며 서울에 올라왔다.\n\n아직 직장은 없다. 아는 사람도 없다. 손에 쥔 돈은 200만 원, 그리고 작은 월세방 한 칸.\n\n낯선 도시에서 무엇부터 시작해야 할까?',
   [['이곳에서 내 인생을 시작한다',showOpeningDecision]]);
 }
 function showOpeningDecision(){
@@ -236,7 +249,7 @@ function visit(id){const l=(st.mapId==='office'?officeLocations:locations).find(
  if(!isOpen(id,arrivalSlot)){showChoices('영업 종료',l.label+'은(는) 현재 이용할 수 없습니다. 영업시간에 다시 방문해 주세요.',[['확인',closePanel]]);return}
  st.flags.lastEntrySlot=arrivalSlot;st.flags.currentLocation=id;if(id!=='house')advance(1);st.visited=[...new Set([...st.visited,id])];persist();if(finishTimeConsequences())return;if(st.mapId==='office'){if(id==='office'&&arrivalSlot===2&&ensureLife().employment==='hired'&&st.day>=ensureLife().startDay)return lateOfficeEvent();return officeEvent(id)}
 if(id==='starbucks')return debtLocked()?blockedByDebt():storyAtCafe();if(id==='house')return showChoices('🏠 '+st.name+'의 집','집에서는 Wi-Fi로 인터넷을 이용할 수 있습니다.',[['인터넷으로 입사지원하기',jobSearch],['휴식하기 (체력 +20)',()=>{st.hp=Math.min(100,st.hp+20);endAction();showChoices('휴식 완료','몸이 한결 가벼워졌습니다.',[['돌아가기',closePanel]])}],['잠자기 (3때 경과 · 체력 완전 회복)',()=>{sleepNextDay()}]]);if(id==='flower')return showChoices('💐 꽃집','화사한 꽃향기가 가득합니다.',[['꽃다발 구매 (12,000원)',()=>purchase('꽃다발',12000)],['동네로 돌아가기',closePanel]]);if(id==='cu')return showChoices('🏪 CU 편의점','오늘도 다양한 상품이 진열되어 있습니다.',[['생수 구매 (1,000원)',()=>purchase('생수',1000,3)],['간식 구매 (2,500원)',()=>purchase('간식',2500,0,4)],['동네로 돌아가기',closePanel]]);if(id==='gukbap')return showChoices('🍲 국밥집','진한 국물 냄새가 가게 안을 채웁니다.',[['국밥 먹기 (9,000원)',()=>purchase('국밥',9000,25,5)],['동네로 돌아가기',closePanel]]);if(id==='park')return showChoices('🌳 동네 공원','벚꽃잎이 바람에 흩날립니다.',[['산책하기 (기분 +10, 1때)',()=>{st.mood=Math.min(100,st.mood+10);endAction();showChoices('산책 완료','기분 좋은 바람을 맞으며 산책했습니다.',[['돌아가기',closePanel]])}],['동네로 돌아가기',closePanel]]);if(id==='pet')return showChoices('🐶 애견샵','귀여운 강아지들이 반갑게 맞이합니다.',[['강아지 구경하기 (기분 +5)',()=>{st.mood=Math.min(100,st.mood+5);endAction();showChoices('애견샵','강아지가 꼬리를 흔듭니다. 언젠가 반려동물을 키워볼까요?',[['돌아가기',closePanel]])}],['동네로 돌아가기',closePanel]]);if(id==='bus')return showChoices('🚌 버스정류장','회사까지 편도 1,800원입니다.',[['회사로 이동 (1,800원)',()=>travel('office','bus',arrivalSlot)],['동네로 돌아가기',closePanel]]);if(id==='taxi')return showChoices('🚕 택시','회사까지 요금 '+taxiFare(arrivalSlot).toLocaleString()+'원입니다.',[['회사로 이동',()=>travel('office','taxi',arrivalSlot)],['동네로 돌아가기',closePanel]])}
-function schedule(){const l=ensureLife();showChoices('📅 일정','현재 상태: '+(l.employment==='hired'?l.company+' 재직':'구직 중')+' · 다음 정산일: '+(Math.floor(st.day/30)+1)*30+'일차', [['확인',closePanel]])}
+function schedule(){const l=ensureLife();showChoices('📅 일정','현재 상태: '+(l.employment==='hired'?l.company+' 재직':'구직 중')+' · 다음 정산일: '+(Math.floor(st.day/30)+1)*30+'일차', [['이번 달 말 지출 예정',()=>showExpenseForecast(schedule)],['확인',closePanel]])}
 function people(){show('💗 인물 관계','<p>한서윤 · 카페 바리스타</p><p>호감도: '+st.relation+'</p><p>대화 진행: '+st.stage+'/3</p>')}
 function inventory(){show('👜 가방','<p>소지금: '+st.money.toLocaleString()+'원</p><p>소지품: '+(st.items.join(', ')||'없음')+'</p>')}
 function journal(){show('📒 기록',st.logs.length?st.logs.map((v,i)=>'<p>'+(i+1)+'. '+v.replace(/</g,'&lt;')+'</p>').join(''):'<p>아직 기록이 없습니다.</p>')}
