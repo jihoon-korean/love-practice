@@ -84,7 +84,7 @@ function workShift(l,late){
   phoneMessage(company+' 인사팀','지각 누적 3회로 해고되었습니다. 근무한 날짜의 급여는 월말 정산됩니다.');
   update();return showChoices('🏢 해고 통보','지각 출근 3회 누적으로 해고되었습니다. 오늘 근무는 급여에 포함됩니다.',[['퇴근하기',closePanel]]);
  }
- update();showChoices('🏢 퇴근','저녁이 되었습니다. 오늘의 근무 급여가 적립되었습니다.'+(late?' 지각 누적 '+l.lateCount+'/3회.':''),[['회사 밖으로 나가기',closePanel]]);
+ update();showChoices('🏢 근무 종료','저녁이 되었습니다. 오늘의 근무 급여가 적립되었습니다.'+(late?' 지각 누적 '+l.lateCount+'/3회.':''),[['정시 퇴근하기',closePanel],['야근하기 (체력 -40)',()=>{st.hp=Math.max(0,st.hp-40);advance(1,{rest:true});st.logs.push(dateLabel(workDay)+' 야근 (체력 -40)');update();if(st.hp===0){st.flags.hospitalPending=true;if(finishTimeConsequences())return;}showChoices('🌙 야근 종료','야근을 마치니 밤이 되었습니다. 체력이 40 감소했습니다.',[['회사 밖으로 나가기',closePanel]])}]]);
 }
 function jobSearch(){
  const l=ensureLife();
