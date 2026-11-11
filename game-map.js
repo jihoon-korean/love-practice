@@ -99,7 +99,7 @@ function monthlyExpenseForecast(){
  const total=MONTHLY_RENT+MONTHLY_UTILITIES+plan.fee;
  const fmt=n=>n.toLocaleString()+'원';
  const expectedSalary=l.employment==='hired'?l.attended.filter(d=>d>nextDay-30&&d<=nextDay).length*(l.monthlyPay||70000):0;
- const forecast='다음 정산일: '+nextDay+'일차\\n월세: '+fmt(MONTHLY_RENT)+'\\n공과금: '+fmt(MONTHLY_UTILITIES)+'\\n휴대폰 ('+plan.name+'): '+fmt(plan.fee)+'\\n고정지출 합계: '+fmt(total)+'\\n현재 소지금: '+fmt(st.money)+'\\n현재 출근 기록 기준 예상 급여: '+fmt(expectedSalary)+'\\n예상 정산 후 잔액: '+fmt(st.money+expectedSalary-total);
+ const forecast='다음 정산일: '+nextDay+'일차<br>월세: '+fmt(MONTHLY_RENT)+'<br>공과금: '+fmt(MONTHLY_UTILITIES)+'<br>휴대폰 ('+plan.name+'): '+fmt(plan.fee)+'<br>고정지출 합계: '+fmt(total)+'<br>현재 소지금: '+fmt(st.money)+'<br>현재 출근 기록 기준 예상 급여: '+fmt(expectedSalary)+'<br>예상 정산 후 잔액: '+fmt(st.money+expectedSalary-total);
  return forecast;
 }
 function showExpenseForecast(back=phone){
