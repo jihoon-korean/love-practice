@@ -293,12 +293,21 @@ function sleepNextDay(){
  showChoices('휴식 완료','3때가 지나고 체력이 80 회복되었습니다.',[['동네로 돌아가기',closePanel]]);
 }
 function endAction(){update()}
-function show(title,body){$('wrap').classList.remove('cafe-mode');$('panel').innerHTML='<h2>'+title+'</h2>'+body;$('wrap').classList.add('show')}
-function closePanel(){$('wrap').classList.remove('show','cafe-mode')}
+function show(title,body){$('wrap').classList.remove('cafe-mode');$('panel').innerHTML='<h2>'+title+'</h2>'+body;openPanel()}
+function closePanel(){
+ const wrap=$('wrap');
+ wrap.classList.remove('show','cafe-mode');
+ wrap.style.pointerEvents='none';
+ wrap.setAttribute('aria-hidden','true');
+ const scene=$('scene');if(scene)scene.classList.remove('travel-fade');
+}
+function openPanel(){
+ const wrap=$('wrap');wrap.style.pointerEvents='auto';wrap.removeAttribute('aria-hidden');wrap.classList.add('show');
+}
 function button(label,fn){const b=document.createElement('button');b.textContent=label;b.onclick=fn;return b}
 function showChoices(title,description,options){show(title,'<p>'+description+'</p><div class="options" id="options"></div>');const root=$('options');if(options.length>=2&&options.every(([label])=>String(label).length<=16))root.classList.add('two-column');for(const [label,cb] of options)root.append(button(label,cb));$('panel').scrollTop=0}
 function home(){st.flags.currentLocation=null;closePanel();refreshTownVisual();renderSpots()}
-function renderSpots(){const el=$('spots');el.replaceChildren();for(const l of (st.mapId==='office'?officeLocations:locations)){const b=document.createElement('button');b.className='spot';b.textContent=l.label;b.style.left=l.x+'%';b.style.top=l.y+'%';b.onclick=()=>visit(l.id);el.append(b)}}
+function renderSpots(){const el=$('spots');el.replaceChildren();for(const l of (st.mapId==='office'?officeLocations:locations)){const b=document.createElement('button');b.className='spot';b.textContent=l.label;b.style.left=l.x+'%';b.style.top=l.y+'%';b.onclick=()=>{if($('wrap').classList.contains('show'))closePanel();visit(l.id)};el.append(b)}}
 function nameStart(){show('🏠 새로운 동네에서의 시작','<p>게임에서 사용할 주인공 이름을 정해주세요. <strong>최대 4글자</strong>입니다.</p><input id="newName" maxlength="4" placeholder="이름 입력" autocomplete="off"><p><button id="nameGo">게임 시작하기</button></p>');$('nameGo').onclick=()=>{const v=Array.from($('newName').value.trim());if(!v.length||v.length>4){alert('이름은 1~4글자로 입력해 주세요.');return}st.name=v.join('');update();showOpeningStory()}}
 function showOpeningStory(){
  const name=(st.name||'주인공').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
