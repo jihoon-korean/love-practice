@@ -7,7 +7,7 @@ const TIME_SLOTS=['아침','점심','낮','저녁','밤','새벽'];
 const HOME_MAP_ID='town',BUS_FARE=1800,TAXI_FARE_DAY=8000,TAXI_FARE_NIGHT=20000;
 const OPEN_HOURS={house:[0,1,2,3,4,5],flower:[0,1,2,3],starbucks:[0,1,2,3],gukbap:[0,1,2,3,4,5],park:[0,1,2,3,4,5],pet:[0,1,2,3],cu:[0,1,2,3,4,5],bus:[0,1,2,3],taxi:[0,1,2,3,4,5]};
 function isOpen(id,slot=st.slot){return (OPEN_HOURS[id]||[]).includes(slot)}
-const PHONE_PLANS={light:{name:'라이트',fee:12000,data:0},basic:{name:'베이직',fee:29000,data:2},super:{name:'슈퍼',fee:59000,data:Infinity}};
+const PHONE_PLANS={light:{name:'라이트',fee:15000,data:0},basic:{name:'베이직',fee:70000,data:2},super:{name:'슈퍼',fee:150000,data:Infinity}};
 const MONTHLY_RENT=800000,MONTHLY_UTILITIES=90000,INDUSTRY_AVG_SALARY=36000000;
 function ensureLife(){st.flags=st.flags||{};if(!st.flags.life){st.flags.life={employment:'unemployed',company:null,application:null,interview:null,phonePlan:'basic',dataUsed:0,contacts:[],messages:[],lastBillsDay:0,lastSalaryDay:0,attended:[],monthlyPay:0};}return st.flags.life}
 function phoneMessage(sender,body){const l=ensureLife();l.messages.unshift({sender,body,day:st.day,read:false});st.logs.push('📱 '+sender+' 문자 도착');persist()}
@@ -158,7 +158,7 @@ function paySalary(){
   const plan=PHONE_PLANS[l.phonePlan]||PHONE_PLANS.basic;
   const charges=MONTHLY_RENT+MONTHLY_UTILITIES+plan.fee;
   st.money-=charges;l.lastBillsDay=d;l.dataUsed=0;
-  phoneMessage('생활비 안내',d+'일차 정기 지출: 월세 '+MONTHLY_RENT.toLocaleString()+'원, 공과금 '+MONTHLY_UTILITIES.toLocaleString()+'원, 휴대폰 '+plan.fee.toLocaleString()+'원. 합계 '+charges.toLocaleString()+'원.');
+  phoneMessage('생활비 안내',d+'일차 정기 지출: 월세 '+MONTHLY_RENT.toLocaleString()+'원, 공과금 '+MONTHLY_UTILITIES.toLocaleString()+'원, 휴대폰 요금 ('+plan.name+') '+plan.fee.toLocaleString()+'원. 합계 '+charges.toLocaleString()+'원.');
   const paidDays=l.attended.filter(day=>day>d-30&&day<=d).length;
   const salary=paidDays*(l.monthlyPay||70000);
   if(salary>0){st.money+=salary;phoneMessage('급여 입금',d+'일차 급여 '+salary.toLocaleString()+'원 입금 ('+paidDays+'일 근무).')}
